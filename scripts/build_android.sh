@@ -16,13 +16,13 @@ fi
 ANDROID_PLATFORM="${ANDROID_PLATFORM:-android-21}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 
-# arm64-v8a is the default release ABI. The legacy ARMv7 sources in upstream
-# Dobby are incomplete in this fork, so armeabi-v7a is not built by default.
-# You can still pass ABIs explicitly, for example: ./scripts/build_android.sh arm64-v8a x86_64
+# Build both common Android ABIs by default. xDL is bundled into each output,
+# so downstream projects only need to package the matching libdobby.so.
+# You can still pass ABIs explicitly, for example: ./scripts/build_android.sh arm64-v8a
 if [[ $# -gt 0 ]]; then
   ABIS=("$@")
 else
-  read -r -a ABIS <<< "${DOBBY_ANDROID_ABIS:-arm64-v8a}"
+  read -r -a ABIS <<< "${DOBBY_ANDROID_ABIS:-arm64-v8a armeabi-v7a}"
 fi
 
 for ABI in "${ABIS[@]}"; do

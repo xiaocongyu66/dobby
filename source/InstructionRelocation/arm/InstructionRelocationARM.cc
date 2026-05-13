@@ -788,7 +788,7 @@ void GenRelocateCode(void *buffer, CodeMemBlock *origin, CodeMemBlock *relocated
   ctx.buffer = ctx.buffer_cursor = (uint8_t *)buffer;
   ctx.buffer_size = origin->size;
 
-  ctx.src_vmaddr = (addr_t)origin->addr;
+  ctx.src_vmaddr = (addr_t)origin->addr();
   ctx.dst_vmaddr = 0;
 
   auto *relocated_buffer = new CodeBuffer();
@@ -832,7 +832,7 @@ relocate_remain:
 
   // update origin
   int new_origin_len = (addr_t)ctx.buffer_cursor - (addr_t)ctx.buffer;
-  origin->reset(origin->addr, new_origin_len);
+  origin->reset(origin->addr(), new_origin_len);
 
   // TODO: if last insn is unlink branch, skip
   if (branch) {
@@ -841,12 +841,12 @@ relocate_remain:
       thumb_ AlignThumbNop();
       thumb_ t2_ldr(pc, MemOperand(pc, 0));
       // get the real branch address
-      thumb_ EmitAddress(origin->addr + origin->size + THUMB_ADDRESS_FLAG);
+      thumb_ EmitAddress(origin->addr() + origin->size + THUMB_ADDRESS_FLAG);
     } else {
       // branch to the rest of instructions
       CodeGen codegen(&arm_turbo_assembler_);
       // get the real branch address
-      codegen.LiteralLdrBranch(origin->addr + origin->size);
+      codegen.LiteralLdrBranch(origin->addr() + origin->size);
     }
   }
 
@@ -860,23 +860,16 @@ relocate_remain:
 
   // generate executable code
   {
-    // assembler without specific memory address
-    auto relocated_mem = MemoryAllocator::SharedAllocator()->allocateExecMemory(relocated_buffer->GetBufferSize());
-    if (relocated_mem == nullptr)
+    auto code = AssemblerCodeBuilder::FinalizeFromTurboAssembler(ctx.curr_assembler);
+    if (code.addr() == 0)
       return;
-
-    thumb_turbo_assembler_.SetRealizedAddress((void *)relocated_mem);
-    arm_turbo_assembler_.SetRealizedAddress((void *)relocated_mem);
-
-    AssemblyCode *code = NULL;
-    code = AssemblyCodeBuilder::FinalizeFromTurboAssembler(ctx.curr_assembler);
-    relocated->reset(code->addr, code->size);
+    relocated->reset(code.addr(), code.size);
   }
 
   // thumb
   if (ctx.start_state == ThumbExecuteState) {
     // add thumb address flag
-    relocated->reset(relocated->addr + THUMB_ADDRESS_FLAG, relocated->size);
+    relocated->reset(relocated->addr() + THUMB_ADDRESS_FLAG, relocated->size);
   }
 
   // clean

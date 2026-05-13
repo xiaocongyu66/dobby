@@ -35,7 +35,7 @@ public:
       case kThumb2LiteralLdr: {
         int64_t pc = ref_label_insn.pc_offset + Thumb_PC_OFFSET;
         assert(pc % 4 == 0);
-        int32_t imm12 = pos() - pc;
+        int32_t imm12 = pos - pc;
 
         if (imm12 > 0) {
           set_bit(insn1, 7, 1);
@@ -234,7 +234,7 @@ public:
 // ===
 #if 0
     if (label->is_bound()) {
-      const int64_t dest = label->pos() - buffer_.Size();
+      const int64_t dest = label->pos - buffer_.Size();
       ldr(rt, MemOperand(pc, dest));
     } else {
       // record this ldr, and fix later.
@@ -245,18 +245,18 @@ public:
   }
 
   void T2_Ldr(Register rt, ThumbPseudoLabel *label) {
-    if (label->pos()) {
-      int offset = label->pos() - buffer_->buffer_size();
+    if (label->pos) {
+      int offset = label->pos - buffer_->size();
       t2_ldr(rt, MemOperand(pc, offset));
     } else {
       // record this ldr, and fix later.
-      label->link_to(kThumb2LiteralLdr, buffer_->buffer_size());
+      label->link_to(kThumb2LiteralLdr, buffer_->size());
       t2_ldr(rt, MemOperand(pc, 0));
     }
   }
 
   void AlignThumbNop() {
-    addr32_t pc = this->code_buffer()->buffer_size() + (uintptr_t)GetRealizedAddress();
+    addr32_t pc = this->code_buffer()->size() + (uintptr_t)GetRealizedAddress();
     if (pc % Thumb2_INST_LEN) {
       t1_nop();
     } else {
@@ -266,11 +266,11 @@ public:
   // ---
 
   void bindLabel(ThumbPseudoLabel *label) {
-    const addr_t bound_pc = buffer_->buffer_size();
+    const addr_t bound_pc = buffer_->size();
     label->bind_to(bound_pc);
     // If some instructions have been wrote, before the label bound, we need link these `confused` instructions
     if (label->has_confused_instructions()) {
-      label->link_confused_instructions(code_buffer());
+      label->link_confused_instructions(static_cast<CodeBuffer *>(code_buffer()));
     }
   }
 

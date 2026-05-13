@@ -98,6 +98,14 @@ struct CodeMemBuffer : MemBuffer {
     EmitBuffer((uint8_t *)&value, sizeof(value));
   }
 
+  uint32_t GetBufferSize() const {
+    return const_cast<CodeMemBuffer *>(this)->size();
+  }
+
+  void Emit16(uint16_t value) {
+    Emit<uint16_t>(value);
+  }
+
 #if defined(TARGET_ARCH_ARM)
   enum ExecuteState{ARMExecuteState, ThumbExecuteState};
   arm_inst_t LoadARMInst(uint32_t offset) {

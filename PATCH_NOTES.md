@@ -68,3 +68,9 @@ c++ -fsyntax-only ... builtin-plugin/SymbolResolver/elf/dobby_xdl_symbol_resolve
 ```
 
 Result: xDL Android integration sources passed syntax checks. A real Android ABI build requires Android NDK, which is not installed in this container.
+## v5: Android 32/64-bit ABI packaging
+
+- Android builds now package both `arm64-v8a` and `armeabi-v7a` by default.
+- Restored ARM32 compatibility shims for legacy Dobby ARM assembler/relocator code.
+- Added `source/core/arch/Cpu.h` wrapper for old ARM/x86 includes.
+- Kept Windows/iOS/macOS code paths removed; this fork targets Linux + Android only.

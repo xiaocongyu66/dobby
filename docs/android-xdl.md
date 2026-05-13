@@ -136,7 +136,7 @@ export ANDROID_NDK_HOME=/path/to/android-ndk
 Default ABIs are `arm64-v8a` and `armeabi-v7a`. You can build specific ABIs:
 
 ```bash
-./scripts/build_android.sh arm64-v8a armeabi-v7a x86_64 x86
+./scripts/build_android.sh arm64-v8a armeabi-v7a
 ```
 
 Outputs are copied to:

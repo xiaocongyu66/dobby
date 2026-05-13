@@ -9,7 +9,7 @@
 
 #include "InstructionRelocation/arm/InstructionRelocationARM.h"
 #include "MemoryAllocator/NearMemoryAllocator.h"
-#include "InterceptRouting/RoutingPlugin/RoutingPlugin.h"
+#include "InterceptRouting/RoutingPlugin.h"
 
 using namespace zz::arm;
 
@@ -20,7 +20,7 @@ static CodeMemBuffer *generate_arm_trampoline(addr32_t from, addr32_t to) {
   CodeGen codegen(&turbo_assembler_);
   codegen.LiteralLdrBranch(to);
 
-  return turbo_assembler_.code_buffer()->Copy();
+  return turbo_assembler_.code_buffer();
 }
 
 CodeMemBuffer *generate_thumb_trampoline(addr32_t from, addr32_t to) {
@@ -32,10 +32,10 @@ CodeMemBuffer *generate_thumb_trampoline(addr32_t from, addr32_t to) {
   _ t2_ldr(pc, MemOperand(pc, 0));
   _ EmitAddress(to);
 
-  return thumb_turbo_assembler_.code_buffer()->Copy();
+  return thumb_turbo_assembler_.code_buffer();
 }
 
-CodeMemBuffer *GenerateNormalTrampolineBuffer(addr_t from, addr_t to) {
+Trampoline *GenerateNormalTrampolineBuffer(addr_t from, addr_t to) {
   enum ExecuteState { ARMExecuteState, ThumbExecuteState };
 
   // set instruction running state
@@ -46,16 +46,20 @@ CodeMemBuffer *GenerateNormalTrampolineBuffer(addr_t from, addr_t to) {
   }
 
   if (execute_state_ == ARMExecuteState) {
-    return generate_arm_trampoline(from, to);
+    auto tramp_buffer = generate_arm_trampoline(from, to);
+    auto tramp_block = tramp_buffer->dup();
+    return new Trampoline(TRAMPOLINE_ARM_LDR_PC, tramp_block);
   } else {
     // Check if needed pc align, (relative pc instructions needed 4 align)
     from = from - THUMB_ADDRESS_FLAG;
-    return generate_thumb_trampoline(from, to);
+    auto tramp_buffer = generate_thumb_trampoline(from, to);
+    auto tramp_block = tramp_buffer->dup();
+    return new Trampoline(TRAMPOLINE_ARM_LDR_PC, tramp_block);
   }
   return NULL;
 }
 
-CodeMemBuffer *GenerateNearTrampolineBuffer(InterceptRouting *routing, addr_t src, addr_t dst) {
+Trampoline *GenerateNearTrampolineBuffer(addr_t src, addr_t dst) {
   return NULL;
 }
 

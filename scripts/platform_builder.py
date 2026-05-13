@@ -7,7 +7,7 @@ import sys
 
 platforms = {
   "linux": ["x86_64"],
-  "android": ["arm64-v8a"],
+  "android": ["arm64-v8a", "armeabi-v7a"],
 }
 
 

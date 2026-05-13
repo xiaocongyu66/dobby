@@ -10,7 +10,9 @@ struct PseudoLabel : Label {
   struct ref_inst_t {
     int link_type;
     uintptr_t inst_offset;
-    explicit ref_inst_t(int link_type, size_t inst_offset) : link_type(link_type), inst_offset(inst_offset) {
+    uintptr_t pc_offset;
+    explicit ref_inst_t(int link_type, size_t inst_offset)
+        : link_type(link_type), inst_offset(inst_offset), pc_offset(inst_offset) {
     }
 
     int type() {
@@ -57,6 +59,14 @@ struct RelocDataLabel : PseudoLabel {
   }
 
   template <typename T> RelocDataLabel(T data) {
+    setData(data);
+  }
+
+  template <typename T> static RelocDataLabel *withData(T data) {
+    return new RelocDataLabel(data);
+  }
+
+  template <typename T> void setData(T data) {
     *(T *)data_ = data;
     data_size_ = sizeof(T);
   }
