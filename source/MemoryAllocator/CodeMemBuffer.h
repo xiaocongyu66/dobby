@@ -2,6 +2,13 @@
 
 #include "dobby/common.h"
 #include "MemoryAllocator.h"
+
+#if defined(TARGET_ARCH_ARM) && !defined(DOBBY_ARM_INST_TYPES_DEFINED)
+#define DOBBY_ARM_INST_TYPES_DEFINED 1
+using arm_inst_t = uint32_t;
+using thumb1_inst_t = uint16_t;
+using thumb2_inst_t = uint32_t;
+#endif
 struct MemBuffer {
   uint8_t *buffer;
   uint32_t buffer_size;

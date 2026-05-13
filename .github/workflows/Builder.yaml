@@ -19,6 +19,7 @@ env:
   LLVM_VERSION: 15.0.6
   NDK_VERSION: r25b
   RELEASE_TAG: latest
+  DOBBY_ANDROID_ABIS: arm64-v8a
 
 jobs:
   linux_and_android:
@@ -132,6 +133,8 @@ jobs:
           name: latest
           body: |
             Dobby Linux/Android build.
+
+            Android package currently builds arm64-v8a by default. Windows/macOS/iOS code paths have been removed.
 
             Android package includes the enhanced dobby.h header with built-in xDL declarations/wrappers, so users only need Dobby's output package.
           artifacts: "artifact/dobby-linux-all.tar.gz,artifact/dobby-android-all.tar.gz"

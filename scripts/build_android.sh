@@ -15,10 +15,14 @@ fi
 
 ANDROID_PLATFORM="${ANDROID_PLATFORM:-android-21}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
+
+# arm64-v8a is the default release ABI. The legacy ARMv7 sources in upstream
+# Dobby are incomplete in this fork, so armeabi-v7a is not built by default.
+# You can still pass ABIs explicitly, for example: ./scripts/build_android.sh arm64-v8a x86_64
 if [[ $# -gt 0 ]]; then
   ABIS=("$@")
 else
-  ABIS=(arm64-v8a armeabi-v7a)
+  read -r -a ABIS <<< "${DOBBY_ANDROID_ABIS:-arm64-v8a}"
 fi
 
 for ABI in "${ABIS[@]}"; do

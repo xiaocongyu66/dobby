@@ -3,10 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(BUILDING_INTERNAL)
-#include "macho/dobby_symbol_resolver_priv.h"
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

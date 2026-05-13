@@ -6,7 +6,6 @@ include(cmake/Util.cmake)
 include(cmake/Macros.cmake)
 include(cmake/build_environment_check.cmake)
 include(cmake/auto_source_group.cmake)
-include(cmake/xcode_generator_helper.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,8 +34,6 @@ option(DOBBY_BUILD_EXAMPLE "Build example" OFF)
 option(DOBBY_BUILD_TEST "Build test" OFF)
 
 # --- private
-option(DOBBY_BUILD_KERNEL_MODE "Build xnu kernel mode" OFF)
-
 option(Private.Obfuscation "Enable llvm obfuscation" OFF)
 
 if ((NOT DEFINED CMAKE_BUILD_TYPE) OR (CMAKE_BUILD_TYPE STREQUAL "Debug"))
@@ -49,10 +46,6 @@ set(compile_definitions "")
 # for arm64, allow access q8 - q31
 if (FullFloatingPointRegisterPack)
   set(compile_definitions "${compile_definitions} -DFULL_FLOATING_POINT_REGISTER_PACK")
-endif ()
-
-if (DOBBY_BUILD_KERNEL_MODE)
-  set(compile_definitions "${compile_definitions} -DBUILDING_KERNEL")
 endif ()
 
 if (DOBBY_DEBUG)
@@ -78,7 +71,6 @@ message(STATUS "[Dobby] Plugin.Android.BionicLinkerUtil: ${Plugin.Android.Bionic
 message(STATUS "[Dobby] DOBBY_ANDROID_USE_XDL: ${DOBBY_ANDROID_USE_XDL}")
 message(STATUS "[Dobby] DOBBY_BUILD_EXAMPLE: ${DOBBY_BUILD_EXAMPLE}")
 message(STATUS "[Dobby] DOBBY_BUILD_TEST: ${DOBBY_BUILD_TEST}")
-message(STATUS "[Dobby] DOBBY_BUILD_KERNEL_MODE: ${DOBBY_BUILD_KERNEL_MODE}")
 message(STATUS "[Dobby] Private.Obfuscation: ${Private.Obfuscation}")
 
 # ---
@@ -98,12 +90,6 @@ include_directories(
 if (SYSTEM.Android AND DOBBY_ANDROID_USE_XDL)
   include_directories(
     ./third_party/xdl
-  )
-endif ()
-
-if (SYSTEM.Darwin AND (NOT DOBBY_BUILD_KERNEL_MODE))
-  include_directories(
-    source/Backend/UserMode
   )
 endif ()
 
@@ -175,17 +161,7 @@ set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
   )
 
 
-if (SYSTEM.Darwin AND NOT DOBBY_BUILD_KERNEL_MODE)
-  set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
-    source/Backend/UserMode/PlatformUtil/Darwin/ProcessRuntime.cc
-
-    source/Backend/UserMode/UnifiedInterface/platform-posix.cc
-
-    source/Backend/UserMode/ExecMemory/code-patch-tool-darwin.cc
-    source/Backend/UserMode/ExecMemory/clear-cache-tool-all.c
-    )
-
-elseif (SYSTEM.Linux OR SYSTEM.Android)
+if (SYSTEM.Linux OR SYSTEM.Android)
   set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
     source/Backend/UserMode/PlatformUtil/Linux/ProcessRuntime.cc
 
@@ -194,15 +170,8 @@ elseif (SYSTEM.Linux OR SYSTEM.Android)
     source/Backend/UserMode/ExecMemory/code-patch-tool-posix.cc
     source/Backend/UserMode/ExecMemory/clear-cache-tool-all.c
     )
-elseif (SYSTEM.Windows)
-  set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
-    source/Backend/UserMode/PlatformUtil/Windows/ProcessRuntime.cc
-
-    source/Backend/UserMode/UnifiedInterface/platform-windows.cc
-
-    source/Backend/UserMode/ExecMemory/code-patch-tool-windows.cc
-    source/Backend/UserMode/ExecMemory/clear-cache-tool-all.c
-    )
+else ()
+  message(FATAL_ERROR "This fork only supports Linux and Android builds.")
 endif ()
 
 if (SYSTEM.Android AND DOBBY_ANDROID_USE_XDL)
@@ -221,16 +190,6 @@ if (PROCESSOR.X86_64 OR PROCESSOR.X86)
 endif ()
 
 # ---
-
-if (0 AND SYSTEM.iOS AND (NOT DOBBY_BUILD_KERNEL_MODE))
-  include_directories(
-    source/Backend/UserMode/ExecMemory/substrated
-  )
-  set(compile_definitions "${compile_definitions} -DCODE_PATCH_WITH_SUBSTRATED")
-  set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
-    source/Backend/UserMode/ExecMemory/substrated/mach_interface_support
-    )
-endif ()
 
 # ----- instrument -----
 
@@ -399,16 +358,10 @@ endif ()
 
 # ---
 
-if (DOBBY_BUILD_EXAMPLE AND (NOT DOBBY_BUILD_KERNEL_MODE))
+if (DOBBY_BUILD_EXAMPLE)
   add_subdirectory(examples)
 endif ()
 
-if (DOBBY_BUILD_TEST AND (NOT DOBBY_BUILD_KERNEL_MODE))
+if (DOBBY_BUILD_TEST)
   add_subdirectory(tests)
-endif ()
-
-# ---
-
-if (SYSTEM.Darwin AND (NOT DOBBY_BUILD_KERNEL_MODE))
-  include(cmake/platform/platform-darwin.cmake)
 endif ()

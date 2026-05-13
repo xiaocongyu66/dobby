@@ -1,89 +1,62 @@
 # Build
 
+This fork is Linux/Android-only. Windows, macOS and iOS build support has been removed.
+
 ## CMake build options
 
-```
-option(DOBBY_GENERATE_SHARED "Build shared library" ON)
-
+```cmake
 option(DOBBY_DEBUG "Enable debug logging" OFF)
-
 option(NearBranch "Enable near branch trampoline" ON)
-
 option(FullFloatingPointRegisterPack "Save and pack all floating-point registers" OFF)
-
 option(Plugin.SymbolResolver "Enable symbol resolver" ON)
-
-option(Plugin.ImportTableReplace "Enable import table replace " OFF)
-
 option(Plugin.Android.BionicLinkerUtil "Enable android bionic linker util" OFF)
-
+option(DOBBY_ANDROID_USE_XDL "Use bundled xDL for enhanced Android ELF symbol resolving" ON)
 option(DOBBY_BUILD_EXAMPLE "Build example" OFF)
-
 option(DOBBY_BUILD_TEST "Build test" OFF)
 ```
 
-## Build with `scripts/platform_builder.py`
-
-#### Build for iphoneos
+## Build Linux
 
 ```shell
-python3 scripts/platform_builder.py --platform=iphoneos --arch=all
+bash scripts/build_linux.sh
 ```
 
-#### Build for macos
+Output:
 
-```
-python3 scripts/platform_builder.py --platform=macos --arch=all
-```
-
-#### Build for linux
-
-```
-# prepare and download cmake/llvm
-sh scripts/setup_linux_cross_compile.sh
-python3 scripts/platform_builder.py --platform=linux --arch=all --cmake_dir=$HOME/opt/cmake-3.25.2 --llvm_dir=$HOME/opt/llvm-15.0.6
+```text
+prebuilt/linux-x86_64/libdobby.so
+prebuilt/linux-x86_64/libdobby.a
+prebuilt/linux-x86_64/dobby.h
 ```
 
-#### Build for android
-
-```
-# prepare and download cmake/llvm/ndk
-sh scripts/setup_linux_cross_compile.sh
-python3 scripts/platform_builder.py --platform=android --arch=all --cmake_dir=$HOME/opt/cmake-3.25.2 --llvm_dir=$HOME/opt/llvm-15.0.6 --android_ndk_dir=$HOME/opt/ndk-r25b
-```
-
-## Build with CMake
-
-#### Build for host
+## Build Android
 
 ```shell
-cd Dobby && mkdir cmake-build-host && cd cmake-build-host
-cmake ..
-make -j4
+export ANDROID_NDK_HOME=/path/to/android-ndk-r25b
+bash scripts/build_android.sh
 ```
 
-## Build with Android  Studio CMake
+The default Android ABI is `arm64-v8a`.
 
+To build explicit ABIs:
+
+```shell
+bash scripts/build_android.sh arm64-v8a x86_64
 ```
-if(NOT TARGET dobby)
-set(DOBBY_DIR /Users/jmpews/Workspace/Project.wrk/Dobby)
-macro(SET_OPTION option value)
-  set(${option} ${value} CACHE INTERNAL "" FORCE)
-endmacro()
-SET_OPTION(DOBBY_DEBUG OFF)
-SET_OPTION(DOBBY_GENERATE_SHARED OFF)
-add_subdirectory(${DOBBY_DIR} dobby)
-get_property(DOBBY_INCLUDE_DIRECTORIES
-  TARGET dobby
-  PROPERTY INCLUDE_DIRECTORIES)
-include_directories(
-  .
-  ${DOBBY_INCLUDE_DIRECTORIES}
-  $<TARGET_PROPERTY:dobby,INCLUDE_DIRECTORIES>
-)
-endif()
 
-add_library(native-lib SHARED
-  ${DOBBY_DIR}/examples/socket_example.cc
-  native-lib.cpp)
+Output:
+
+```text
+prebuilt/android/<abi>/libdobby.so
+prebuilt/android/<abi>/libdobby.a
+prebuilt/android/<abi>/dobby.h
+prebuilt/android/include/dobby.h
+```
+
+## Build with CMake directly
+
+```shell
+cmake -S . -B build/linux-x86_64 -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DDOBBY_BUILD_EXAMPLE=ON -DDOBBY_BUILD_TEST=OFF
+cmake --build build/linux-x86_64 -j$(nproc)
 ```

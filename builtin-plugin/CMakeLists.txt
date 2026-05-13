@@ -1,7 +1,5 @@
-if (Plugin.ImportTableReplace AND SYSTEM.Darwin)
-  message(STATUS "[Dobby] Enable got hook")
-  include_directories(builtin-plugin/ImportTableReplace)
-  add_subdirectory(builtin-plugin/ImportTableReplace)
+if (Plugin.ImportTableReplace)
+  message(FATAL_ERROR "Plugin.ImportTableReplace was removed from this Linux/Android-only fork.")
 endif ()
 
 if (Plugin.Android.BionicLinkerUtil)
