@@ -32,13 +32,13 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Initialize cross compile environment
+      - name: Initialize build environment
         shell: bash
         run: |
           set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
           sh scripts/setup_linux_cross_compile.sh
-          sudo apt-get -y install ninja-build
-          chmod +x scripts/build_linux.sh scripts/build_android.sh || true
           mkdir -p artifact dist
 
       - name: Build Linux
