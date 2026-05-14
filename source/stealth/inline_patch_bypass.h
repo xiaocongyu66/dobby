@@ -15,14 +15,14 @@ struct InlinePatchBypass {
   static void Disable();
 
   // 临时恢复指定地址的原始代码（用于校验期间）
-  static bool TempRestore(addr_t addr);
+  static bool TempRestore(uintptr_t addr);
 
   // 重新应用 Hook
-  static bool ReapplyHook(addr_t addr);
+  static bool ReapplyHook(uintptr_t addr);
 
 private:
   struct WatchPoint {
-    addr_t hook_addr;      // Hook 点地址
+    uintptr_t hook_addr;      // Hook 点地址
     size_t patch_size;     // 被修改的代码大小
     uint8_t *orig_code;    // 原始代码备份
     uint8_t *patch_code;   // Hook 跳转代码

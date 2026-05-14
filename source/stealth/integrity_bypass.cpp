@@ -91,7 +91,7 @@ static void sigsegv_handler(int sig, siginfo_t *info, void *context) {
   uintptr_t fault_addr = (uintptr_t)info->si_addr;
 
   // 检查是否在我们的保护范围内
-  for (const auto &mod : protected_modules_) {
+  for (const auto &mod : IntegrityBypass::protected_modules_) {
     uintptr_t text_start = mod.base;
     uintptr_t text_end = mod.base + mod.text_size;
 

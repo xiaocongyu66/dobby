@@ -32,7 +32,7 @@ static std::mutex g_patch_lock;
 static void sigsegv_handler(int sig, siginfo_t *info, void *context) {
   uintptr_t fault_addr = (uintptr_t)info->si_addr;
 
-  for (auto &wp : watch_points_) {
+  for (auto &wp : InlinePatchBypass::watch_points_) {
     uintptr_t start = wp.hook_addr;
     uintptr_t end = wp.hook_addr + wp.patch_size;
 
@@ -88,7 +88,7 @@ static struct sigaction g_old_sigtrap;
 
 static void sigtrap_handler(int sig, siginfo_t *info, void *context) {
   // 检查是否需要重新应用 Hook
-  for (auto &wp : watch_points_) {
+  for (auto &wp : InlinePatchBypass::watch_points_) {
     if (wp.is_restored) {
       std::lock_guard<std::mutex> lock(g_patch_lock);
 
@@ -234,7 +234,7 @@ void InlinePatchBypass::Disable() {
   enabled_ = false;
 }
 
-bool InlinePatchBypass::TempRestore(addr_t addr) {
+bool InlinePatchBypass::TempRestore(uintptr_t addr) {
   for (auto &wp : watch_points_) {
     if (wp.hook_addr == addr && !wp.is_restored) {
       std::lock_guard<std::mutex> lock(g_patch_lock);
@@ -248,7 +248,7 @@ bool InlinePatchBypass::TempRestore(addr_t addr) {
   return false;
 }
 
-bool InlinePatchBypass::ReapplyHook(addr_t addr) {
+bool InlinePatchBypass::ReapplyHook(uintptr_t addr) {
   for (auto &wp : watch_points_) {
     if (wp.hook_addr == addr && wp.is_restored) {
       std::lock_guard<std::mutex> lock(g_patch_lock);
