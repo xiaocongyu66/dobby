@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <unistd.h>
 #include <sys/mman.h>
 
 namespace dobby_stealth {

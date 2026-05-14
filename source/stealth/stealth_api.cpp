@@ -11,6 +11,8 @@
 #include "inline_patch_bypass.h"
 #include "module_scan_bypass.h"
 #include "anti_cheat_sdk.h"
+#include "short_function_hook.h"
+#include "stealth_trampoline.h"
 
 using namespace dobby_stealth;
 

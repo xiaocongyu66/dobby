@@ -3,11 +3,20 @@
 
 #include <elf.h>
 #include <link.h>
+#include <unistd.h>
+#include <sys/mman.h>
 #include <cstring>
 #include <cstdio>
 #include <cstddef>
 
 namespace dobby_stealth {
+
+// Elf_Phdr 类型定义（根据架构选择 32/64 位）
+#if defined(__aarch64__) || defined(__x86_64__)
+using Elf_Phdr_Local = Elf64_Phdr;
+#else
+using Elf_Phdr_Local = Elf32_Phdr;
+#endif
 
 std::vector<ShortFunctionHook::ShortHookEntry> ShortFunctionHook::entries_;
 
@@ -129,7 +138,7 @@ int ShortFunctionHook::HookPLT(const char *image_name, const char *symbol,
   if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) return -1;
 
   // 遍历动态段查找 JMPREL 和 PLTGOT
-  auto *phdr = (Elf_Phdr *)(module_base + ehdr->e_phoff);
+  auto *phdr = (Elf_Phdr_Local *)(module_base + ehdr->e_phoff);
   uintptr_t dyn_addr = 0;
   size_t dyn_size = 0;
 
