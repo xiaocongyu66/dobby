@@ -1,0 +1,144 @@
+name: Builder
+
+"on":
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dobby-builder-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_VERSION: 3.25.2
+  LLVM_VERSION: 15.0.6
+  NDK_VERSION: r25b
+  RELEASE_TAG: latest
+  DOBBY_ANDROID_ABIS: arm64-v8a armeabi-v7a
+
+jobs:
+  linux_and_android:
+    name: Build Linux and Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize build environment
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          sh scripts/setup_linux_cross_compile.sh
+          mkdir -p artifact dist
+
+      - name: Build Linux
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          if [ -f scripts/build_linux.sh ]; then
+            bash scripts/build_linux.sh
+          else
+            python3 scripts/platform_builder.py \
+              --platform=linux \
+              --arch=all \
+              --cmake_dir="$HOME/opt/cmake-$CMAKE_VERSION" \
+              --llvm_dir="$HOME/opt/llvm-$LLVM_VERSION"
+          fi
+
+          rm -rf dist/dobby-linux
+          mkdir -p dist/dobby-linux
+
+          if [ -d prebuilt/linux-x86_64 ]; then
+            cp -a prebuilt/linux-x86_64/. dist/dobby-linux/
+          elif [ -d build/linux ]; then
+            cp -a build/linux/. dist/dobby-linux/
+          else
+            echo "Linux build output was not found." >&2
+            find build prebuilt -maxdepth 3 -type f 2>/dev/null || true
+            exit 1
+          fi
+
+          cp include/dobby.h dist/dobby-linux/dobby.h
+          tar -C dist -zcvf artifact/dobby-linux-all.tar.gz dobby-linux
+
+      - name: Build Android
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          export ANDROID_NDK_HOME="$HOME/opt/ndk-$NDK_VERSION"
+          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+
+          if [ -f scripts/build_android.sh ]; then
+            bash scripts/build_android.sh
+          else
+            python3 scripts/platform_builder.py \
+              --platform=android \
+              --arch=all \
+              --cmake_dir="$HOME/opt/cmake-$CMAKE_VERSION" \
+              --llvm_dir="$HOME/opt/llvm-$LLVM_VERSION" \
+              --android_ndk_dir="$ANDROID_NDK_HOME"
+          fi
+
+          rm -rf dist/dobby-android
+          mkdir -p dist/dobby-android
+
+          if [ -d prebuilt/android ]; then
+            cp -a prebuilt/android/. dist/dobby-android/
+          elif [ -d build/android ]; then
+            cp -a build/android/. dist/dobby-android/
+          else
+            echo "Android build output was not found." >&2
+            find build prebuilt -maxdepth 3 -type f 2>/dev/null || true
+            exit 1
+          fi
+
+          cp include/dobby.h dist/dobby-android/dobby.h
+          tar -C dist -zcvf artifact/dobby-android-all.tar.gz dobby-android
+
+      - name: Print artifact tree
+        shell: bash
+        run: |
+          set -euxo pipefail
+          find artifact -maxdepth 2 -type f -print -exec ls -lh {} \;
+          tar -tzf artifact/dobby-linux-all.tar.gz | head -100
+          tar -tzf artifact/dobby-android-all.tar.gz | head -100
+
+      - name: Move latest tag
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$RELEASE_TAG" "$GITHUB_SHA"
+          git push -f origin "$RELEASE_TAG"
+
+      - name: Publish latest release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.RELEASE_TAG }}
+          name: latest
+          body: |
+            Dobby Linux/Android build.
+
+            Android package builds both arm64-v8a and armeabi-v7a by default. Windows/macOS/iOS code paths have been removed.
+
+            Android package includes the enhanced dobby.h header with built-in xDL declarations/wrappers, so users only need Dobby's output package.
+          artifacts: "artifact/dobby-linux-all.tar.gz,artifact/dobby-android-all.tar.gz"
+          allowUpdates: true
+          replacesArtifacts: true
+          removeArtifacts: true
+          makeLatest: true
