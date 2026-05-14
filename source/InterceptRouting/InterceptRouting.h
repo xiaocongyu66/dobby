@@ -21,11 +21,9 @@ struct InterceptRouting {
 
   ~InterceptRouting() {
     if (trampoline) {
-      // TODO: free code block
       delete trampoline;
     }
     if (near_trampoline) {
-      // TODO: free code block
       delete near_trampoline;
     }
   }
@@ -45,17 +43,26 @@ struct InterceptRouting {
   addr_t trampoline_addr() {
     if (near_trampoline)
       return near_trampoline->addr();
-    return trampoline->addr();
+    if (trampoline)
+      return trampoline->addr();
+    return 0;
   }
 
   size_t trampoline_size() {
     if (near_trampoline)
       return near_trampoline->size();
-    return trampoline->size();
+    if (trampoline)
+      return trampoline->size();
+    return 0;
   }
 
   virtual void Active() {
     __FUNC_CALL_TRACE__();
+    if (error || trampoline_addr() == 0 || trampoline_size() == 0) {
+      ERROR_LOG("trampoline is not available");
+      error = 1;
+      return;
+    }
     auto ret = DobbyCodePatch((void *)entry->addr, (uint8_t *)trampoline_addr(), trampoline_size());
     error |= (ret != 0);
   }
@@ -79,14 +86,23 @@ struct InterceptRouting {
     if (!near_trampoline) {
       trampoline = GenerateNormalTrampolineBuffer(from, to);
     }
+    if (!near_trampoline && !trampoline) {
+      ERROR_LOG("failed to generate trampoline");
+      error = 1;
+      return false;
+    }
     return true;
   }
 
   void GenerateRelocatedCode() {
     __FUNC_CALL_TRACE__();
+    if (error) {
+      return;
+    }
     if (trampoline_addr() == 0) {
       ERROR_LOG("GenerateTrampoline must be called first");
       error = 1;
+      return;
     }
 
     auto code_addr = entry->addr;

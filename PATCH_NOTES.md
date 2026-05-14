@@ -74,3 +74,51 @@ Result: xDL Android integration sources passed syntax checks. A real Android ABI
 - Restored ARM32 compatibility shims for legacy Dobby ARM assembler/relocator code.
 - Added `source/core/arch/Cpu.h` wrapper for old ARM/x86 includes.
 - Kept Windows/iOS/macOS code paths removed; this fork targets Linux + Android only.
+
+## v6: handle API, safer patching, and executable memory lifecycle
+
+This revision keeps the legacy `DobbyHook()` / `DobbyDestroy()` API but adds a handle-based lifecycle API for new callers:
+
+```c
+DobbyHookHandle *handle = NULL;
+void *origin = NULL;
+int rc = DobbyHookEx(target, replacement, &origin, &handle);
+if (rc == 0) {
+  DobbyUnhook(handle);        // disables the hook, handle remains queryable but inactive
+  DobbyDestroyHandle(handle); // releases the inactive handle
+}
+```
+
+New public API:
+
+- `DobbyHookEx(address, fake_func, out_origin_func, out_handle)`
+- `DobbyUnhook(handle)`
+- `DobbyDestroyHandle(handle)`
+- `DobbyHookHandleTarget(handle)`
+- `DobbyHookHandleOrigin(handle)`
+- `DobbyHookHandleIsActive(handle)`
+
+Safety/lifecycle changes:
+
+- `DobbyCodePatch()` now reads original page permissions from `/proc/self/maps`, makes only the affected pages writable, restores each page to its original permissions, supports multi-page patches, checks range overflow, and rolls back patched bytes if permission restoration fails.
+- The in-process memory allocators now track executable/data allocations by page, expose free paths, reuse freed blocks, and unmap fully freed pages.
+- `Trampoline` and `ClosureTrampoline` now own and release heap buffers, executable allocator blocks, near-code blocks, and x64 near-data stubs.
+- `Interceptor::Entry` releases relocated executable code on destroy/failure paths.
+- x86 relocation retry now releases a too-small executable block before retrying with a larger block.
+- Legacy `DobbyDestroy(address)` invalidates an outstanding handle created by `DobbyHookEx()` for the same target.
+
+Verification performed in this container:
+
+```sh
+cmake -S . -B /mnt/data/dobby_build_clean -DDOBBY_BUILD_EXAMPLE=ON -DDOBBY_BUILD_TEST=OFF -DDOBBY_DEBUG=OFF
+cmake --build /mnt/data/dobby_build_clean -j2
+```
+
+Result: `libdobby.so`, `libdobby.a`, `socket_example`, and `libsocket_example_lib.so` built successfully.
+
+Additional smoke tests passed:
+
+- handle-based hook/origin/unhook/destroy flow
+- legacy `DobbyDestroy(address)` invalidating a handle
+- repeated hook/unhook stress loop using handles
+- `DobbyCodePatch()` across a page boundary while preserving writable data-page permissions

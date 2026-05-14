@@ -86,7 +86,7 @@ __attribute__((constructor)) static void ctor() {
 
   void *func = NULL;
   func_map = new std::map<void *, const char *>();
-  for (int i = 0; i < sizeof(func_array) / sizeof(char *); ++i) {
+  for (int i = 0; i < sizeof(func_array) / sizeof(func_array[0]); ++i) {
     func = DobbySymbolResolver(NULL, func_array[i]);
     if (func == NULL) {
       INFO_LOG("func %s not resolve", func_array[i]);
@@ -97,7 +97,7 @@ __attribute__((constructor)) static void ctor() {
 
   for (auto iter = func_map->begin(), e = func_map->end(); iter != e; iter++) {
     bool is_short = false;
-    for (int i = 0; i < sizeof(func_short_array) / sizeof(char *); ++i) {
+    for (int i = 0; i < sizeof(func_short_array) / sizeof(func_short_array[0]); ++i) {
       if (strcmp(func_short_array[i], iter->second) == 0) {
         is_short = true;
         break;
@@ -140,7 +140,7 @@ uint64_t socket_demo_server(void *ctx) {
   int opt = 1;
   int addrlen = sizeof(address);
   char buffer[1024] = {0};
-  char *hello = "Hello from server";
+  const char *hello = "Hello from server";
 
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     ERROR_LOG("socket failed: %s", strerror(errno));
@@ -180,7 +180,7 @@ uint64_t socket_demo_server(void *ctx) {
 uint64_t socket_demo_client(void *ctx) {
   int sock = 0;
   struct sockaddr_in serv_addr;
-  char *hello = "Hello from client";
+  const char *hello = "Hello from client";
   char buffer[1024] = {0};
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     ERROR_LOG("socket failed");

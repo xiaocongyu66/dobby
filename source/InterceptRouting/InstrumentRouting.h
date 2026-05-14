@@ -3,6 +3,7 @@
 #include "dobby/common.h"
 #include "InterceptRouting/InterceptRouting.h"
 #include "TrampolineBridge/ClosureTrampolineBridge/ClosureTrampoline.h"
+#include "Runtime/HookRuntime.h"
 
 struct InstrumentRouting : InterceptRouting {
   ClosureTrampoline *instrument_tramp = nullptr;
@@ -12,7 +13,6 @@ struct InstrumentRouting : InterceptRouting {
 
   ~InstrumentRouting() {
     if (instrument_tramp) {
-      // TODO: free code block
       delete instrument_tramp;
     }
   }
@@ -24,6 +24,9 @@ struct InstrumentRouting : InterceptRouting {
   void GenerateInstrumentClosureTrampoline() {
     __FUNC_CALL_TRACE__();
     instrument_tramp = ::GenerateInstrumentClosureTrampoline(entry);
+    if (!instrument_tramp) {
+      error = 1;
+    }
   }
 
   void BuildRouting() {
@@ -31,7 +34,9 @@ struct InstrumentRouting : InterceptRouting {
 
     GenerateInstrumentClosureTrampoline();
 
-    GenerateTrampoline();
+    if (!GenerateTrampoline()) {
+      return;
+    }
 
     GenerateRelocatedCode();
 
@@ -51,6 +56,8 @@ PUBLIC inline int DobbyInstrument(void *address, dobby_instrument_callback_t pre
 
   DEBUG_LOG("----- [DobbyInstrument: %p] -----", address);
 
+  std::lock_guard<std::mutex> interceptor_lock(gInterceptor.mutex_);
+
   auto entry = gInterceptor.find((addr_t)address);
   if (entry) {
     ERROR_LOG("%s already been instrumented.", address);
@@ -58,19 +65,43 @@ PUBLIC inline int DobbyInstrument(void *address, dobby_instrument_callback_t pre
   }
 
   entry = new Interceptor::Entry((addr_t)address);
+  entry->id = gInterceptor.next_entry_id_++;
   entry->pre_handler = pre_handler;
 
   auto routing = new InstrumentRouting(entry, pre_handler);
   routing->BuildRouting();
-  routing->Active();
-  entry->routing = routing;
-
   if (routing->error) {
     ERROR_LOG("build routing error.");
+    delete routing;
+    delete entry;
+    return -1;
+  }
+
+  entry->routing = routing;
+  routing->Active();
+  if (routing->error) {
+    ERROR_LOG("routing active failed.");
+    if (entry->origin_code_) {
+      entry->restore_orig_code();
+    }
+    delete routing;
+    delete entry;
     return -1;
   }
 
   gInterceptor.add(entry);
+
+  dobby::HookRecord runtime_record;
+  runtime_record.target = (void *)address;
+  runtime_record.replace = nullptr;
+  runtime_record.backup = nullptr;
+  runtime_record.trampoline = reinterpret_cast<void *>(entry->relocated.addr());
+  runtime_record.backend = dobby::HookBackend::Inline;
+  runtime_record.state = dobby::HookState::Enabled;
+  runtime_record.enabled = true;
+  runtime_record.patch_addr = entry->patched.addr();
+  runtime_record.patch_size = entry->patched.size;
+  dobby::HookRuntime::Shared().Upsert(runtime_record);
 
   return 0;
 }

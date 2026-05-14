@@ -49,17 +49,16 @@ typedef union _FPReg {
   } f;
 } FPReg;
 
-// register context
 typedef struct {
-  uint64_t dmmpy_0; // dummy placeholder
+  uint64_t dmmpy_0;
   uint64_t sp;
 
-  uint64_t dmmpy_1; // dummy placeholder
+  uint64_t dmmpy_1;
   union {
     uint64_t x[29];
     struct {
-      uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22,
-          x23, x24, x25, x26, x27, x28;
+      uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21,
+          x22, x23, x24, x25, x26, x27, x28;
     } regs;
   } general;
 
@@ -70,10 +69,8 @@ typedef struct {
     FPReg q[32];
     struct {
       FPReg q0, q1, q2, q3, q4, q5, q6, q7;
-      // [!!! READ ME !!!]
-      // for Arm64, can't access q8 - q31, unless you enable full floating-point register pack
-      FPReg q8, q9, q10, q11, q12, q13, q14, q15, q16, q17, q18, q19, q20, q21, q22, q23, q24, q25, q26, q27, q28, q29,
-          q30, q31;
+      FPReg q8, q9, q10, q11, q12, q13, q14, q15, q16, q17, q18, q19, q20, q21, q22, q23, q24, q25, q26, q27, q28,
+          q29, q30, q31;
     } regs;
   } floating;
 } DobbyRegisterContext;
@@ -109,34 +106,27 @@ typedef struct {
 #define install_hook_name(name, fn_ret_t, fn_args_t...)                                                                \
   static fn_ret_t fake_##name(fn_args_t);                                                                              \
   static fn_ret_t (*orig_##name)(fn_args_t);                                                                           \
-  /* __attribute__((constructor)) */ static void install_hook_##name(void *sym_addr) {                                 \
+  static void install_hook_##name(void *sym_addr) {                                                                    \
     DobbyHook(sym_addr, (void *)fake_##name, (void **)&orig_##name);                                                   \
     return;                                                                                                            \
   }                                                                                                                    \
   fn_ret_t fake_##name(fn_args_t)
 
-// memory code patch
 int DobbyCodePatch(void *address, uint8_t *buffer, uint32_t buffer_size);
-
-// function inline hook
+typedef struct DobbyHookHandle DobbyHookHandle;
 int DobbyHook(void *address, void *fake_func, void **out_origin_func);
-
-// dynamic binary instruction instrument
-// for Arm64, can't access q8 - q31, unless enable full floating-point register pack
+int DobbyHookEx(void *address, void *fake_func, void **out_origin_func, DobbyHookHandle **out_handle);
+int DobbyUnhook(DobbyHookHandle *handle);
+int DobbyDestroyHandle(DobbyHookHandle *handle);
+void *DobbyHookHandleTarget(DobbyHookHandle *handle);
+void *DobbyHookHandleOrigin(DobbyHookHandle *handle);
+int DobbyHookHandleIsActive(DobbyHookHandle *handle);
 typedef void (*dobby_instrument_callback_t)(void *address, DobbyRegisterContext *ctx);
 int DobbyInstrument(void *address, dobby_instrument_callback_t pre_handler);
-
-// destroy and restore code patch
 int DobbyDestroy(void *address);
-
 const char *DobbyGetVersion();
-
-// symbol resolver
 void *DobbySymbolResolver(const char *image_name, const char *symbol_name);
 
-// Extended symbol resolving flags. On Android builds with DOBBY_ANDROID_USE_XDL,
-// these control bundled xDL lookup. Default lookup checks .dynsym first and then
-// .symtab, matching the behavior commonly used by Android inline-hook libraries.
 #define DOBBY_SYMBOL_RESOLVER_DEFAULT 0u
 #define DOBBY_SYMBOL_RESOLVER_DYNSYM_ONLY (1u << 0)
 #define DOBBY_SYMBOL_RESOLVER_SYMTAB_ONLY (1u << 1)
@@ -145,8 +135,6 @@ void *DobbySymbolResolver(const char *image_name, const char *symbol_name);
 
 void *DobbySymbolResolverEx(const char *image_name, const char *symbol_name, uint32_t flags,
                             size_t *symbol_size);
-
-// Resolve a symbol and hook it in one step.
 int DobbyHookBySymbol(const char *image_name, const char *symbol_name, void *fake_func, void **out_origin_func);
 int DobbyHookBySymbolEx(const char *image_name, const char *symbol_name, void *fake_func,
                         void **out_origin_func, uint32_t flags, size_t *symbol_size);
@@ -157,11 +145,7 @@ int DobbyHookBySymbolCallback(const char *image_name, const char *symbol_name, v
                               void *hooked_arg);
 int DobbyDestroyBySymbol(const char *image_name, const char *symbol_name);
 
-
 #if defined(__ANDROID__)
-// Bundled official xDL 2.3.0 API. These symbols are built into Dobby when
-// DOBBY_ANDROID_USE_XDL=ON, so users can include only dobby.h and link/package
-// only libdobby.
 #ifndef IO_GITHUB_HEXHACKING_XDL
 #define IO_GITHUB_HEXHACKING_XDL
 #include <dlfcn.h>
@@ -198,9 +182,6 @@ int xdl_iterate_phdr(int (*callback)(struct dl_phdr_info *, size_t, void *), voi
 int xdl_info(void *handle, int request, void *info);
 #endif
 
-// Dobby-prefixed xDL helpers. They add cached open for common Android system
-// libraries and a single symbol helper which can select .dynsym or .symtab by
-// using DOBBY_SYMBOL_RESOLVER_* flags.
 void *DobbyXdlOpen(const char *filename, int flags);
 void *DobbyXdlOpenFromInfo(struct dl_phdr_info *info);
 void *DobbyXdlClose(void *handle);
@@ -212,12 +193,6 @@ const char *DobbyGetLibraryPath(void *handle);
 int DobbyGetAddressInfo(void *addr, xdl_info_t *info);
 #endif
 
-
-
-// Android-oriented convenience layer. These APIs are intentionally visible and
-// auditable: they make hooks easier to install, list, and remove for legitimate
-// debugging, instrumentation, and offline demo testing. They do not implement
-// stealth injection, anti-detection, or anti-cheat bypass behavior.
 #define DOBBY_ANDROID_NAME_MAX 256
 
 typedef enum {
@@ -229,7 +204,16 @@ typedef enum {
   DOBBY_ANDROID_ERR_HOOK_FAILED = -5,
   DOBBY_ANDROID_ERR_UNHOOK_FAILED = -6,
   DOBBY_ANDROID_ERR_BUFFER_TOO_SMALL = -7,
+  DOBBY_ANDROID_ERR_BACKEND_UNSUPPORTED = -8,
+  DOBBY_ANDROID_ERR_TRANSACTION_ACTIVE = -9,
 } DobbyAndroidStatus;
+
+typedef enum {
+  DOBBY_HOOK_BACKEND_AUTO = 0,
+  DOBBY_HOOK_BACKEND_INLINE = 1,
+  DOBBY_HOOK_BACKEND_PLT = 2,
+  DOBBY_HOOK_BACKEND_VTABLE = 3,
+} DobbyHookBackend;
 
 typedef struct {
   char image_name[DOBBY_ANDROID_NAME_MAX];
@@ -238,33 +222,38 @@ typedef struct {
   void *target_addr;
   void *replace_addr;
   void *origin_addr;
+  uintptr_t patch_addr;
+  size_t patch_size;
   int enabled;
   int status;
+  int backend;
+  int kind;
 } DobbyAndroidHookRecord;
 
 const char *DobbyAndroidStatusName(int code);
 const char *DobbyAndroidGetLastError();
 uintptr_t DobbyAndroidGetModuleBase(const char *image_name);
 void *DobbyAndroidFindSymbol(const char *image_name, const char *symbol_name);
+int DobbyAndroidHookBackend(void *target, void *replace, void **origin, DobbyHookBackend backend);
+int DobbyAndroidHookSymbolBackend(const char *image_name, const char *symbol_name, void *replace, void **origin,
+                                  DobbyHookBackend backend);
 int DobbyAndroidHookFunction(void *target, void *replace, void **origin);
 int DobbyAndroidHookSymbol(const char *image_name, const char *symbol_name, void *replace, void **origin);
 int DobbyAndroidHookOffset(const char *image_name, uintptr_t offset, void *replace, void **origin);
+int DobbyAndroidHookPLT(const char *image_name, const char *symbol_name, void *replace, void **origin);
+int DobbyAndroidHookVtable(void *object, int vtable_index, void *replace, void **origin);
 int DobbyAndroidUnhook(void *target);
 int DobbyAndroidIsHooked(void *target);
 int DobbyAndroidListHooks(DobbyAndroidHookRecord *records, int max_count);
 int DobbyAndroidClearAllHooks();
+int DobbyAndroidBeginTransaction();
+int DobbyAndroidCommitTransaction();
+int DobbyAndroidRollbackTransaction();
 
-// import table replace
 int DobbyImportTableReplace(char *image_name, char *symbol_name, void *fake_func, void **orig_func);
-
-// for arm, Arm64, try use b xxx instead of ldr absolute indirect branch
-// for x86, x64, always use absolute indirect jump
 void dobby_set_near_trampoline(bool enable);
-
-// register callback for alloc near code block
 typedef addr_t (*dobby_alloc_near_code_callback_t)(uint32_t size, addr_t pos, size_t range);
 void dobby_register_alloc_near_code_callback(dobby_alloc_near_code_callback_t handler);
-
 void dobby_set_options(bool enable_near_trampoline, dobby_alloc_near_code_callback_t alloc_near_code_callback);
 
 #ifdef __cplusplus

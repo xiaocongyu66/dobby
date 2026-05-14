@@ -11,7 +11,7 @@
 #include <vector>
 #include <algorithm>
 
-#define LINE_MAX 2048
+constexpr size_t DOBBY_PROC_MAPS_LINE_MAX = 2048;
 
 static bool memory_region_comparator(const MemRange &a, const MemRange &b) {
   return (a.start() < b.start());
@@ -26,11 +26,11 @@ const stl::vector<MemRegion> &ProcessRuntime::getMemoryLayout() {
     return regions;
 
   while (!feof(fp)) {
-    char line_buffer[LINE_MAX + 1];
-    fgets(line_buffer, LINE_MAX, fp);
+    char line_buffer[DOBBY_PROC_MAPS_LINE_MAX + 1];
+    fgets(line_buffer, DOBBY_PROC_MAPS_LINE_MAX, fp);
 
     // ignore the rest of characters
-    if (strlen(line_buffer) == LINE_MAX && line_buffer[LINE_MAX] != '\n') {
+    if (strlen(line_buffer) == DOBBY_PROC_MAPS_LINE_MAX && line_buffer[DOBBY_PROC_MAPS_LINE_MAX] != '\n') {
       // Entry not describing executable data. Skip to end of line to set up
       // reading the next entry.
       int c;
@@ -102,11 +102,11 @@ static stl::vector<RuntimeModule> &get_process_map_with_proc_maps() {
     return *modules;
 
   while (!feof(fp)) {
-    char line_buffer[LINE_MAX + 1];
-    fgets(line_buffer, LINE_MAX, fp);
+    char line_buffer[DOBBY_PROC_MAPS_LINE_MAX + 1];
+    fgets(line_buffer, DOBBY_PROC_MAPS_LINE_MAX, fp);
 
     // ignore the rest of characters
-    if (strlen(line_buffer) == LINE_MAX && line_buffer[LINE_MAX] != '\n') {
+    if (strlen(line_buffer) == DOBBY_PROC_MAPS_LINE_MAX && line_buffer[DOBBY_PROC_MAPS_LINE_MAX] != '\n') {
       // Entry not describing executable data. Skip to end of line to set up
       // reading the next entry.
       int c;

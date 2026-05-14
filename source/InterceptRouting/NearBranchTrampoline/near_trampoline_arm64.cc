@@ -42,7 +42,7 @@ static Trampoline *GenerateFastForwardTrampoline(addr_t src, addr_t dst) {
 
   turbo_assembler_.fixed_addr = blk.addr();
   auto forward_tramp_block = AssemblerCodeBuilder::FinalizeFromTurboAssembler(&turbo_assembler_);
-  auto forward_tramp = new Trampoline(FORWARD_TRAMPOLINE_ARM64, forward_tramp_block);
+  auto forward_tramp = new Trampoline(FORWARD_TRAMPOLINE_ARM64, forward_tramp_block, TRAMPOLINE_BUFFER_NEAR_EXEC_ALLOCATOR);
   DEBUG_LOG("[forward trampoline] trampoline addr: %p, size: %d", forward_tramp->addr(), forward_tramp->size());
   debug_hex_log_buffer((uint8_t *)forward_tramp->addr(), forward_tramp->size());
   return forward_tramp;

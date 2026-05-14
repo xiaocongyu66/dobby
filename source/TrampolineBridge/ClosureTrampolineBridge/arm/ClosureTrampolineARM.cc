@@ -27,7 +27,7 @@ ClosureTrampoline *GenerateClosureTrampoline(void *carry_data, void *carry_handl
   _ EmitAddress((uint32_t)(uintptr_t)get_closure_bridge_addr());
 
   auto tramp_block = AssemblerCodeBuilder::FinalizeFromTurboAssembler(&turbo_assembler_);
-  closure_tramp->buffer = tramp_block;
+  closure_tramp->set_buffer(tramp_block, TRAMPOLINE_BUFFER_EXEC_ALLOCATOR);
   return closure_tramp;
 }
 

@@ -159,6 +159,7 @@ set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
   # main
   source/dobby.cpp
   source/dobby_android_api.cpp
+  source/Runtime/HookRuntime.cpp
   )
 
 
@@ -231,7 +232,6 @@ if (Plugin.SymbolResolver)
     ${symbol_resolver.SOURCE_FILE_LIST}
     )
 endif ()
-
 
 # CMake uses the C/ASM compiler for .asm files, but GCC/Clang do not
 # infer the source language from the .asm extension. Force preprocessing

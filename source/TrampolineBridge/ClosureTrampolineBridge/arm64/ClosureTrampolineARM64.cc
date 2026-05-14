@@ -70,7 +70,7 @@ ClosureTrampoline *GenerateClosureTrampoline(void *carry_data, void *carry_handl
       AssemblerCodeBuilder::FinalizeFromTurboAssembler(static_cast<AssemblerBase *>(&turbo_assembler_));
 #endif
 
-  closure_tramp->buffer = tramp_block;
+  closure_tramp->set_buffer(tramp_block, TRAMPOLINE_BUFFER_EXEC_ALLOCATOR);
   DEBUG_LOG("closure trampoline addr: %p, size: %d", closure_tramp->addr(), closure_tramp->size());
   debug_hex_log_buffer((uint8_t *)closure_tramp->addr(), closure_tramp->size());
   return closure_tramp;

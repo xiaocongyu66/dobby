@@ -22,6 +22,8 @@ struct CodeGen : CodeGenBase {
     __ Emit<int8_t>(0xff);
     __ Emit<int8_t>(0x25); // ModR/M: 00 100 101
     __ Emit<int32_t>(offset);
+#undef _
+#undef __
   }
 };
 

@@ -16,3 +16,6 @@ This package adds a safe Android-oriented hook convenience layer to Dobby.
 ## Safety boundary
 
 This patch does not add stealth injection, anti-detection, anti-debug bypass, anti-cheat bypass, map hiding, integrity-check bypass, or module hiding.
+
+
+Note: `source/stealth/` is not included in the default build and is treated as archived/experimental material. The supported Android API layer remains limited to ordinary hook management, symbol resolution, and hook bookkeeping.

@@ -5,9 +5,22 @@
 
 #include "TrampolineBridge/Trampoline/Trampoline.h"
 
+#include <mutex>
+
 typedef enum { kFunctionInlineHook, kInstructionInstrument } InterceptRoutingType;
 
+static const uint64_t kDobbyHookHandleMagic = 0x444f42425948444cULL;
+
 struct InterceptRouting;
+struct DobbyHookHandle {
+  uint64_t magic = kDobbyHookHandleMagic;
+  uint32_t id = 0;
+  addr_t target = 0;
+  void *origin = nullptr;
+  bool active = false;
+  void *entry = nullptr;
+};
+
 struct Interceptor {
   struct Entry {
     uint32_t id = 0;
@@ -25,7 +38,8 @@ struct Interceptor {
     MemBlock patched;
     MemBlock relocated;
 
-    InterceptRouting *routing;
+    InterceptRouting *routing = nullptr;
+    DobbyHookHandle *handle = nullptr;
 
     uint8_t *origin_code_ = 0;
 
@@ -34,21 +48,47 @@ struct Interceptor {
     }
 
     ~Entry() {
+      if (origin_code_) {
+        restore_orig_code();
+      }
+      release_relocated_code();
+      if (handle) {
+        handle->active = false;
+        handle->entry = nullptr;
+      }
     }
 
     void backup_orig_code() {
       __FUNC_CALL_TRACE__();
       auto orig = (uint8_t *)this->addr;
       uint32_t tramp_size = this->patched.size;
+      if (!orig || tramp_size == 0) {
+        origin_code_ = nullptr;
+        return;
+      }
+      if (origin_code_) {
+        operator delete(origin_code_);
+        origin_code_ = nullptr;
+      }
       origin_code_ = (uint8_t *)operator new(tramp_size);
       memcpy(origin_code_, orig, tramp_size);
     }
 
     void restore_orig_code() {
       __FUNC_CALL_TRACE__();
+      if (!origin_code_ || patched.size == 0 || patched.addr() == 0) {
+        return;
+      }
       DobbyCodePatch((void *)patched.addr(), origin_code_, patched.size);
       operator delete(origin_code_);
       origin_code_ = nullptr;
+    }
+
+    void release_relocated_code() {
+      if (relocated.addr() != 0 && relocated.size != 0) {
+        gMemoryAllocator.freeExecBlock(relocated);
+        relocated = MemBlock{};
+      }
     }
 
     void feature_set_arm_thumb(bool thumb) {
@@ -56,6 +96,8 @@ struct Interceptor {
     }
   };
 
+  std::mutex mutex_;
+  uint32_t next_entry_id_ = 1;
   stl::vector<Entry *> entries;
 
   static Interceptor *Shared();

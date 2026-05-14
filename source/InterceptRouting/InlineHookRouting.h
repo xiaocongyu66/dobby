@@ -3,6 +3,7 @@
 #include "dobby/common.h"
 #include "InterceptRouting/InterceptRouting.h"
 #include "TrampolineBridge/ClosureTrampolineBridge/ClosureTrampoline.h"
+#include "Runtime/HookRuntime.h"
 
 struct InlineHookRouting : InterceptRouting {
   addr_t fake_func;
@@ -19,7 +20,9 @@ struct InlineHookRouting : InterceptRouting {
   void BuildRouting() {
     __FUNC_CALL_TRACE__();
 
-    GenerateTrampoline();
+    if (!GenerateTrampoline()) {
+      return;
+    }
 
     GenerateRelocatedCode();
 
@@ -27,10 +30,13 @@ struct InlineHookRouting : InterceptRouting {
   }
 };
 
-PUBLIC inline int DobbyHook(void *address, void *fake_func, void **out_origin_func) {
+PUBLIC inline int DobbyHookEx(void *address, void *fake_func, void **out_origin_func, DobbyHookHandle **out_handle) {
   __FUNC_CALL_TRACE__();
-  if (!address) {
-    ERROR_LOG("address is 0x0");
+  if (out_handle) {
+    *out_handle = nullptr;
+  }
+  if (!address || !fake_func) {
+    ERROR_LOG("invalid DobbyHookEx argument: address=%p fake_func=%p", address, fake_func);
     return -1;
   }
 
@@ -40,6 +46,8 @@ PUBLIC inline int DobbyHook(void *address, void *fake_func, void **out_origin_fu
 
   DEBUG_LOG("----- [DobbyHook: %p] -----", address);
 
+  std::lock_guard<std::mutex> interceptor_lock(gInterceptor.mutex_);
+
   auto entry = gInterceptor.find((addr_t)address);
   if (entry) {
     ERROR_LOG("%p already been hooked.", address);
@@ -47,24 +55,65 @@ PUBLIC inline int DobbyHook(void *address, void *fake_func, void **out_origin_fu
   }
 
   entry = new Interceptor::Entry((addr_t)address);
+  entry->id = gInterceptor.next_entry_id_++;
   entry->fake_func_addr = (addr_t)fake_func;
 
   auto routing = new InlineHookRouting(entry, (addr_t)fake_func);
   routing->BuildRouting();
-  routing->Active();
-  entry->routing = routing;
-
   if (routing->error) {
     ERROR_LOG("build routing error.");
+    delete routing;
+    delete entry;
     return -1;
   }
 
-  if (out_origin_func) {
-    *out_origin_func = (void *)entry->relocated.addr();
+  entry->routing = routing;
+  routing->Active();
+  if (routing->error) {
+    ERROR_LOG("routing active failed.");
+    if (entry->origin_code_) {
+      entry->restore_orig_code();
+    }
+    delete routing;
+    delete entry;
+    return -1;
   }
-  features::apple::arm64e_pac_strip_and_sign(*out_origin_func);
+
+  void *origin_func = (void *)entry->relocated.addr();
+  features::apple::arm64e_pac_strip_and_sign(origin_func);
+  if (out_origin_func) {
+    *out_origin_func = origin_func;
+  }
+
+  DobbyHookHandle *handle = nullptr;
+  if (out_handle) {
+    handle = new DobbyHookHandle();
+    handle->id = entry->id;
+    handle->target = (addr_t)address;
+    handle->origin = origin_func;
+    handle->active = true;
+    handle->entry = entry;
+    entry->handle = handle;
+    *out_handle = handle;
+  }
 
   gInterceptor.add(entry);
 
+  dobby::HookRecord runtime_record;
+  runtime_record.target = (void *)address;
+  runtime_record.replace = fake_func;
+  runtime_record.backup = out_origin_func ? *out_origin_func : nullptr;
+  runtime_record.trampoline = reinterpret_cast<void *>(entry->relocated.addr());
+  runtime_record.backend = dobby::HookBackend::Inline;
+  runtime_record.state = dobby::HookState::Enabled;
+  runtime_record.enabled = true;
+  runtime_record.patch_addr = entry->patched.addr();
+  runtime_record.patch_size = entry->patched.size;
+  dobby::HookRuntime::Shared().Upsert(runtime_record);
+
   return 0;
+}
+
+PUBLIC inline int DobbyHook(void *address, void *fake_func, void **out_origin_func) {
+  return DobbyHookEx(address, fake_func, out_origin_func, nullptr);
 }

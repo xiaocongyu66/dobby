@@ -191,6 +191,7 @@ int GenRelocateSingleX86Insn(addr_t curr_orig_ip, addr_t curr_relo_ip, uint8_t *
     DEBUG_LOG("insn -> relocated insn: %d -> %d", insn.length, relo_len);
   }
   return relocated_insn_len;
+#undef __
 }
 
 void GenRelocateCodeX86Shared(void *buffer, CodeMemBlock *origin, CodeMemBlock *relocated, bool branch) {
@@ -209,6 +210,9 @@ x86_try_again:
   if (ret != 0) {
     const int step_size = 16;
     expected_relocated_mem_size += step_size;
+    if (relocated->addr() != 0 && relocated->size != 0) {
+      gMemoryAllocator.freeExecBlock(*relocated);
+    }
     relocated->reset(0, 0);
 
     goto x86_try_again;
