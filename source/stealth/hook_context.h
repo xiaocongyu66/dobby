@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#if defined(__aarch64__) || defined(__arm64__)
+#if defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
 #include "dobby.h" // DobbyRegisterContext
 #endif
 
@@ -78,8 +78,13 @@ struct HookContext {
   void SetLR(uint32_t val);
 #endif
 
+#if defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
   // 构造
   HookContext(DobbyRegisterContext *c) : ctx(c) {}
+#else
+  // 构造（其他架构）
+  HookContext(void *c) : ctx(c) {}
+#endif
 };
 
 } // namespace dobby_stealth

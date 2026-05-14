@@ -3,6 +3,7 @@
 
 #include <dlfcn.h>
 #include <link.h>
+#include <inttypes.h>
 #include <cstring>
 #include <cstdio>
 
@@ -201,7 +202,7 @@ bool LinkerSolistHider::HideModuleByBase(uintptr_t base) {
   char name[256] = {0};
   while (fgets(line, sizeof(line), fp)) {
     uintptr_t start;
-    if (sscanf(line, "%lx-", &start) == 1 && start == base) {
+    if (sscanf(line, "%" SCNxPTR "-", &start) == 1 && start == base) {
       // 提取名称
       char *p = strrchr(line, '/');
       if (p) {
