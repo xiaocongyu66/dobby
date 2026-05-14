@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 namespace dobby_stealth {
+
 #if defined(__aarch64__) || defined(__arm64__)
 
 uint64_t HookContext::GetX(int n) const {
@@ -73,17 +74,18 @@ std::string HookContext::ReadCString(uint64_t addr) const {
   return result;
 }
 
-#endif
-#if defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
+#elif defined(__arm__)
 
 uint32_t HookContext::GetR(int n) const {
   if (!ctx || n < 0 || n > 12) return 0;
-  return ((DobbyRegisterContext *)ctx)->general.r[n];
+  uint32_t *regs = &((DobbyRegisterContext *)ctx)->general.regs.r0;
+  return regs[n];
 }
 
 void HookContext::SetR(int n, uint32_t val) {
   if (!ctx || n < 0 || n > 12) return;
-  ((DobbyRegisterContext *)ctx)->general.r[n] = val;
+  uint32_t *regs = &((DobbyRegisterContext *)ctx)->general.regs.r0;
+  regs[n] = val;
 }
 
 uint32_t HookContext::GetSP() const {
@@ -101,8 +103,6 @@ uint32_t HookContext::GetLR() const {
 void HookContext::SetLR(uint32_t val) {
   if (ctx) ((DobbyRegisterContext *)ctx)->lr = val;
 }
-
-#endif
 
 #endif
 
