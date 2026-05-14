@@ -76,7 +76,7 @@ static std::string filter_maps(const std::string &content) {
     bool should_hide = false;
 
     // 关键词过滤
-    for (const auto &keyword : hidden_keywords_) {
+    for (const auto &keyword : MapsHider::hidden_keywords_) {
       if (line.find(keyword) != std::string::npos) {
         should_hide = true;
         break;
@@ -87,7 +87,7 @@ static std::string filter_maps(const std::string &content) {
     if (!should_hide) {
       uintptr_t start = 0, end = 0;
       if (sscanf(line.c_str(), "%lx-%lx", &start, &end) == 2) {
-        for (const auto &range : hidden_ranges_) {
+        for (const auto &range : MapsHider::hidden_ranges_) {
           if (start >= range.first && start < range.second) {
             should_hide = true;
             break;
