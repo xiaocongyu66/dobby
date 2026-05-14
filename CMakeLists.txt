@@ -33,8 +33,6 @@ option(DOBBY_BUILD_EXAMPLE "Build example" OFF)
 
 option(DOBBY_BUILD_TEST "Build test" OFF)
 
-option(DOBBY_STEALTH "Enable stealth anti-detection module (Android only)" ON)
-
 # --- private
 option(Private.Obfuscation "Enable llvm obfuscation" OFF)
 
@@ -73,7 +71,6 @@ message(STATUS "[Dobby] Plugin.Android.BionicLinkerUtil: ${Plugin.Android.Bionic
 message(STATUS "[Dobby] DOBBY_ANDROID_USE_XDL: ${DOBBY_ANDROID_USE_XDL}")
 message(STATUS "[Dobby] DOBBY_BUILD_EXAMPLE: ${DOBBY_BUILD_EXAMPLE}")
 message(STATUS "[Dobby] DOBBY_BUILD_TEST: ${DOBBY_BUILD_TEST}")
-message(STATUS "[Dobby] DOBBY_STEALTH: ${DOBBY_STEALTH}")
 message(STATUS "[Dobby] Private.Obfuscation: ${Private.Obfuscation}")
 
 # ---
@@ -235,32 +232,6 @@ if (Plugin.SymbolResolver)
     )
 endif ()
 
-# --- Stealth anti-detection module ---
-if (SYSTEM.Android AND DOBBY_STEALTH)
-  include_directories(source/stealth)
-  set(dobby.stealth.SOURCE_FILE_LIST
-    source/stealth/hide_module.cpp
-    source/stealth/hide_maps.cpp
-    source/stealth/anti_debug.cpp
-    source/stealth/anti_frida.cpp
-    source/stealth/anti_substrate.cpp
-    source/stealth/integrity_bypass.cpp
-    source/stealth/inline_patch_bypass.cpp
-    source/stealth/module_scan_bypass.cpp
-    source/stealth/anti_cheat_sdk.cpp
-    source/stealth/stealth_api.cpp
-    source/stealth/short_function_hook.cpp
-    source/stealth/stealth_trampoline.cpp
-    source/stealth/hook_context.cpp
-    )
-  set(dobby.plugin.SOURCE_FILE_LIST ${dobby.plugin.SOURCE_FILE_LIST}
-    ${dobby.stealth.SOURCE_FILE_LIST}
-    )
-  set(compile_definitions "${compile_definitions} -DDOBBY_STEALTH")
-  message(STATUS "[Dobby] DOBBY_STEALTH: ON")
-endif ()
-
-# ---
 
 # CMake uses the C/ASM compiler for .asm files, but GCC/Clang do not
 # infer the source language from the .asm extension. Force preprocessing
