@@ -26,9 +26,11 @@ struct MapsHider {
   static void Cleanup();
 
 private:
+  static bool initialized_;
+
+public:
   static std::vector<std::string> hidden_keywords_;
   static std::vector<std::pair<uintptr_t, uintptr_t>> hidden_ranges_;
-  static bool initialized_;
 };
 
 } // namespace dobby_stealth
