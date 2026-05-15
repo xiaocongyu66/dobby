@@ -62,7 +62,7 @@ bool UniversalHookManager::TryInstall(Task &task) {
     return false;
   }
 
-  if (DobbyHook(symbol, task.descriptor.replace_call, task.descriptor.origin_call) == RS_SUCCESS) {
+  if (DobbyHook(symbol, task.descriptor.replace_call, task.descriptor.origin_call) == 0) {
     task.installed = true;
   }
 
