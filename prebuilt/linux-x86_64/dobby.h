@@ -256,6 +256,207 @@ typedef addr_t (*dobby_alloc_near_code_callback_t)(uint32_t size, addr_t pos, si
 void dobby_register_alloc_near_code_callback(dobby_alloc_near_code_callback_t handler);
 void dobby_set_options(bool enable_near_trampoline, dobby_alloc_near_code_callback_t alloc_near_code_callback);
 
+
+// ================= Runtime Auto Hook API =================
+/*
+ * Runtime Auto Hook is a delayed hook scheduler for modules/symbols that may
+ * not be ready when your library is loaded. This avoids installing hooks too
+ * early and repeatedly checks until the target module/symbol/address becomes
+ * available, or until timeout_ms expires.
+ *
+ * Android note:
+ *   When built with DOBBY_ANDROID_USE_XDL, Android module discovery and symbol
+ *   resolution prefer xDL. Linux and other supported POSIX builds keep the
+ *   normal dl_iterate_phdr / dlsym compatible fallback path.
+ *
+ * Basic delayed symbol hook example:
+ *
+ *   #include "dobby.h"
+ *
+ *   static int (*orig_target_func)(int value) = 0;
+ *
+ *   static int fake_target_func(int value) {
+ *     // Call the original when you need the original behavior.
+ *     return orig_target_func ? orig_target_func(value) : value;
+ *   }
+ *
+ *   static void on_target_hooked(int status,
+ *                                const DobbyAutoHookDescriptor *desc,
+ *                                void *resolved_target,
+ *                                void *origin_func,
+ *                                void *user_data) {
+ *     // status == DOBBY_AUTOHOOK_STATUS_INSTALLED means success.
+ *     // status < 0 means timeout, failed, or cancelled.
+ *     (void)desc;
+ *     (void)resolved_target;
+ *     (void)origin_func;
+ *     (void)user_data;
+ *   }
+ *
+ *   void install_delayed_hook(void) {
+ *     DobbyRuntimeOptions runtime = {0};
+ *     runtime.flags = DOBBY_AUTOHOOK_WAIT_MODULE |
+ *                     DOBBY_AUTOHOOK_WAIT_SYMBOL |
+ *                     DOBBY_AUTOHOOK_RETRY |
+ *                     DOBBY_AUTOHOOK_DELAY_FIRST;
+ *     runtime.retry_interval_ms = 250;   // Check again every 250 ms.
+ *     runtime.timeout_ms = 30000;        // Give up after 30 seconds. 0 = never timeout.
+ *     runtime.start_delay_ms = 500;      // First attempt happens after 500 ms.
+ *     DobbyEnableRuntime(&runtime);
+ *
+ *     DobbyAutoHookDescriptor hook = {0};
+ *     hook.image_name = "libtarget.so";                  // NULL or empty = search all loaded modules.
+ *     hook.symbol_name = "target_func";                  // Exported or, on Android xDL builds, dynsym/symtab symbol.
+ *     hook.replace_func = (void *)fake_target_func;      // Your replacement function.
+ *     hook.origin_func = (void **)&orig_target_func;     // Receives callable original trampoline.
+ *     hook.flags = DOBBY_AUTOHOOK_WAIT_MODULE |
+ *                  DOBBY_AUTOHOOK_WAIT_SYMBOL |
+ *                  DOBBY_AUTOHOOK_RETRY |
+ *                  DOBBY_AUTOHOOK_DELAY_FIRST;
+ *     hook.retry_interval_ms = 250;      // 0 = use runtime default.
+ *     hook.timeout_ms = 30000;           // 0 = use runtime default; runtime default 0 = no timeout.
+ *     hook.start_delay_ms = 1000;        // Delay first install attempt by 1 second.
+ *     hook.backend = DOBBY_HOOK_BACKEND_AUTO; // AUTO tries inline first, then PLT when applicable.
+ *     hook.callback = on_target_hooked;  // Optional. Called once when installed/failed/timeout/cancelled.
+ *     hook.user_data = 0;                // Optional pointer returned to callback.
+ *
+ *     DobbyAutoHook(&hook);
+ *   }
+ *
+ * Short form, when default delay/retry settings are enough:
+ *
+ *   DobbyAutoHookSymbol("libtarget.so", "target_func",
+ *                       (void *)fake_target_func,
+ *                       (void **)&orig_target_func);
+ *
+ * Blocking form, when the caller wants to wait synchronously:
+ *
+ *   int rc = DobbyWaitAndHook("libtarget.so", "target_func",
+ *                             (void *)fake_target_func,
+ *                             (void **)&orig_target_func,
+ *                             10000); // 10 second timeout
+ *
+ * Offset form, when the target is image base + offset:
+ *
+ *   DobbyWaitAndHookOffset("libtarget.so", 0x1234,
+ *                          (void *)fake_target_func,
+ *                          (void **)&orig_target_func,
+ *                          10000);
+ *
+ * Direct-address form, when you already have a function address:
+ *
+ *   DobbyAutoHookDescriptor direct = {0};
+ *   direct.target_addr = known_function_address;
+ *   direct.replace_func = (void *)fake_target_func;
+ *   direct.origin_func = (void **)&orig_target_func;
+ *   direct.flags = DOBBY_AUTOHOOK_ADDRESS | DOBBY_AUTOHOOK_RETRY;
+ *   DobbyAutoHook(&direct);
+ *
+ * Flag guide:
+ *   DOBBY_AUTOHOOK_NONE         Use runtime defaults when passed in descriptor.flags.
+ *   DOBBY_AUTOHOOK_WAIT_MODULE  Wait until image_name is loaded before installing.
+ *   DOBBY_AUTOHOOK_WAIT_SYMBOL  Wait until symbol_name resolves before installing.
+ *   DOBBY_AUTOHOOK_LINKER_EVENT Reserved for future linker-event driven wakeups.
+ *   DOBBY_AUTOHOOK_RETRY        Retry instead of failing immediately when target is not ready.
+ *   DOBBY_AUTOHOOK_DELAY_FIRST  Apply start_delay_ms before the first install attempt.
+ *   DOBBY_AUTOHOOK_USE_PLT      Prefer PLT/GOT replacement for symbol hooks.
+ *   DOBBY_AUTOHOOK_ADDRESS      descriptor.target_addr is the hook target.
+ *   DOBBY_AUTOHOOK_OFFSET       descriptor.offset is relative to descriptor.image_name base.
+ *
+ * Parameter guide:
+ *   image_name         Target shared object name, e.g. "libtarget.so". NULL/empty means all modules for symbol lookup.
+ *   symbol_name        Target function symbol. Required for symbol/PLT hooks.
+ *   replace_func       Replacement function. Required.
+ *   origin_func        Optional output pointer. If non-NULL, receives original callable function/trampoline.
+ *   retry_interval_ms  Delay between attempts. 0 means use runtime default.
+ *   timeout_ms         Maximum wait time. 0 means use runtime default; runtime default 0 means no timeout.
+ *   start_delay_ms     Delay before first attempt. Only used with DOBBY_AUTOHOOK_DELAY_FIRST.
+ *   offset             RVA from image base. Used with DOBBY_AUTOHOOK_OFFSET / DobbyWaitAndHookOffset.
+ *   target_addr        Direct target address. Used with DOBBY_AUTOHOOK_ADDRESS.
+ *   backend            DOBBY_HOOK_BACKEND_AUTO, INLINE, PLT, or VTABLE where supported.
+ *   callback           Optional completion callback. Called once per scheduled hook.
+ *   user_data          Optional opaque pointer passed to callback unchanged.
+ *
+ * Return guide:
+ *   Immediate API return 0 means the request was accepted or installed.
+ *   Negative DOBBY_AUTOHOOK_STATUS_* values indicate scheduler failure, timeout,
+ *   install failure, or cancellation. For Android helper APIs, use
+ *   DobbyAndroidStatusName() and DobbyAndroidGetLastError() for diagnostics.
+ */
+
+#define DOBBY_AUTOHOOK_DEFAULT_RETRY_MS 250u
+#define DOBBY_AUTOHOOK_DEFAULT_START_DELAY_MS 250u
+
+typedef enum {
+  DOBBY_AUTOHOOK_NONE = 0,
+  DOBBY_AUTOHOOK_WAIT_MODULE = 1 << 0,
+  DOBBY_AUTOHOOK_WAIT_SYMBOL = 1 << 1,
+  DOBBY_AUTOHOOK_LINKER_EVENT = 1 << 2,
+  DOBBY_AUTOHOOK_RETRY = 1 << 3,
+  DOBBY_AUTOHOOK_DELAY_FIRST = 1 << 4,
+  DOBBY_AUTOHOOK_USE_PLT = 1 << 5,
+  DOBBY_AUTOHOOK_ADDRESS = 1 << 6,
+  DOBBY_AUTOHOOK_OFFSET = 1 << 7,
+} DobbyAutoHookFlags;
+
+typedef enum {
+  DOBBY_AUTOHOOK_STATUS_PENDING = 0,
+  DOBBY_AUTOHOOK_STATUS_INSTALLED = 1,
+  DOBBY_AUTOHOOK_STATUS_TIMEOUT = -2,
+  DOBBY_AUTOHOOK_STATUS_FAILED = -3,
+  DOBBY_AUTOHOOK_STATUS_CANCELLED = -4,
+} DobbyAutoHookStatus;
+
+typedef struct DobbyAutoHookDescriptor DobbyAutoHookDescriptor;
+typedef void (*dobby_autohook_callback_t)(int status,
+                                          const DobbyAutoHookDescriptor *descriptor,
+                                          void *resolved_target,
+                                          void *origin_func,
+                                          void *user_data);
+
+struct DobbyAutoHookDescriptor {
+  const char *image_name;
+  const char *symbol_name;
+  void *replace_func;
+  void **origin_func;
+  uint32_t retry_interval_ms;
+  uint32_t timeout_ms;
+  uint32_t flags;
+  uint32_t start_delay_ms;
+  uintptr_t offset;
+  void *target_addr;
+  int backend;
+  dobby_autohook_callback_t callback;
+  void *user_data;
+};
+
+typedef struct {
+  const char *image_name;
+  uint32_t flags;
+  uint32_t retry_interval_ms;
+  uint32_t timeout_ms;
+  uint32_t start_delay_ms;
+} DobbyRuntimeOptions;
+
+int DobbyEnableRuntime(const DobbyRuntimeOptions *options);
+int DobbyDisableRuntime(void);
+int DobbyAutoHook(const DobbyAutoHookDescriptor *descriptor);
+int DobbyAutoHookSymbol(const char *image_name,
+                        const char *symbol_name,
+                        void *replace_func,
+                        void **origin_func);
+int DobbyWaitAndHook(const char *image_name,
+                     const char *symbol_name,
+                     void *replace_func,
+                     void **origin_func,
+                     uint32_t timeout_ms);
+int DobbyWaitAndHookOffset(const char *image_name,
+                           uintptr_t offset,
+                           void *replace_func,
+                           void **origin_func,
+                           uint32_t timeout_ms);
+int DobbyAutoHookPendingCount(void);
+
 #ifdef __cplusplus
 }
 #endif

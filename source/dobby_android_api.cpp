@@ -352,6 +352,20 @@ uintptr_t find_module_base_portable(const char *image_name) {
 #if defined(__linux__) || defined(__ANDROID__)
   FindModuleCtx ctx;
   ctx.image_name = image_name;
+#if defined(__ANDROID__) && defined(DOBBY_ANDROID_USE_XDL)
+  xdl_iterate_phdr(
+      [](struct dl_phdr_info *info, size_t size, void *data) -> int {
+        (void)size;
+        auto *ctx = reinterpret_cast<FindModuleCtx *>(data);
+        if (!ctx || !info)
+          return 0;
+        if (!image_matches(info->dlpi_name, ctx->image_name))
+          return 0;
+        ctx->base = static_cast<uintptr_t>(info->dlpi_addr);
+        return 1;
+      },
+      &ctx, XDL_FULL_PATHNAME);
+#else
   dl_iterate_phdr(
       [](struct dl_phdr_info *info, size_t size, void *data) -> int {
         (void)size;
@@ -364,6 +378,7 @@ uintptr_t find_module_base_portable(const char *image_name) {
         return 1;
       },
       &ctx);
+#endif
   return ctx.base;
 #else
   (void)image_name;
@@ -513,6 +528,20 @@ int hook_target_common(const char *image_name, const char *symbol_name, uintptr_
     ctx.backend = backend;
     ctx.kind = kind;
     ctx.tx_id = g_tx_current_id;
+#if defined(__ANDROID__) && defined(DOBBY_ANDROID_USE_XDL)
+    xdl_iterate_phdr(
+        [](struct dl_phdr_info *info, size_t size, void *data) -> int {
+          (void)size;
+          auto *ctx = reinterpret_cast<ModulePatcher *>(data);
+          if (!ctx || !info)
+            return 0;
+          patch_module_plt(info, ctx);
+          if (ctx->patched_any)
+            return 1;
+          return 0;
+        },
+        &ctx, XDL_FULL_PATHNAME);
+#else
     dl_iterate_phdr(
         [](struct dl_phdr_info *info, size_t size, void *data) -> int {
           (void)size;
@@ -525,6 +554,7 @@ int hook_target_common(const char *image_name, const char *symbol_name, uintptr_
           return 0;
         },
         &ctx);
+#endif
 
     if (!ctx.patched_any) {
       set_last_error("plt hook failed: image=%s symbol=%s", image_name ? image_name : "<all>",
