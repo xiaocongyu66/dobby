@@ -160,6 +160,7 @@ set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST}
   source/dobby.cpp
   source/dobby_android_api.cpp
   source/Runtime/HookRuntime.cpp
+  source/Runtime/UniversalHookManager.cpp
   )
 
 

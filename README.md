@@ -52,3 +52,39 @@ if (DobbyHookEx(target, replacement, &origin, &handle) == 0) {
 4. [v8](https://github.com/v8/v8)
 5. [dart](https://github.com/dart-lang/sdk)
 6. [vixl](https://git.linaro.org/arm/vixl.git)
+
+## Universal Runtime Hook Extension
+
+This fork adds a cross-runtime delayed hook scheduler designed for anti-crash and engine-independent deployments.
+
+### Features
+
+- Automatic delayed hook installation.
+- Polling-based runtime symbol discovery.
+- Safe retry for Unity / Unreal / custom engines.
+- Avoids early-linker hook crashes.
+- Works for dynamically loaded SO modules.
+- Compatible with Android/Linux native runtimes.
+- Runtime-safe deferred hook queue.
+
+### Example
+
+```cpp
+static void *orig_eglSwapBuffers = nullptr;
+
+static int fake_eglSwapBuffers(void *display, void *surface) {
+  return ((decltype(&fake_eglSwapBuffers))orig_eglSwapBuffers)(display, surface);
+}
+
+__attribute__((constructor))
+static void init() {
+  DobbyRegisterAutoHook(
+      "libEGL.so",
+      "eglSwapBuffers",
+      (void *)fake_eglSwapBuffers,
+      &orig_eglSwapBuffers,
+      250);
+}
+```
+
+This approach is significantly safer than immediate constructor-time hooks because many games load rendering/runtime modules asynchronously.
