@@ -261,3 +261,44 @@ void dobby_set_options(bool enable_near_trampoline, dobby_alloc_near_code_callba
 #endif
 
 #endif
+
+// ================= Runtime Auto Hook API =================
+
+typedef enum {
+  DOBBY_AUTOHOOK_NONE = 0,
+  DOBBY_AUTOHOOK_WAIT_MODULE = 1 << 0,
+  DOBBY_AUTOHOOK_WAIT_SYMBOL = 1 << 1,
+  DOBBY_AUTOHOOK_LINKER_EVENT = 1 << 2,
+  DOBBY_AUTOHOOK_RETRY = 1 << 3,
+} DobbyAutoHookFlags;
+
+typedef struct {
+  const char *image_name;
+  const char *symbol_name;
+  void *replace_func;
+  void **origin_func;
+  uint32_t retry_interval_ms;
+  uint32_t timeout_ms;
+  uint32_t flags;
+} DobbyAutoHookDescriptor;
+
+typedef struct {
+  const char *image_name;
+  uint32_t flags;
+  uint32_t retry_interval_ms;
+  uint32_t timeout_ms;
+} DobbyRuntimeOptions;
+
+int DobbyEnableRuntime(const DobbyRuntimeOptions *options);
+int DobbyDisableRuntime(void);
+int DobbyAutoHook(const DobbyAutoHookDescriptor *descriptor);
+int DobbyAutoHookSymbol(const char *image_name,
+                        const char *symbol_name,
+                        void *replace_func,
+                        void **origin_func);
+int DobbyWaitAndHook(const char *image_name,
+                     const char *symbol_name,
+                     void *replace_func,
+                     void **origin_func,
+                     uint32_t timeout_ms);
+
