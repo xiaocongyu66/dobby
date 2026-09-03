@@ -44,6 +44,11 @@ int DobbyUnhook(void *address);
 // 对指定库的 PLT/GOT 表中 symbol 槽全部替换 (支持运行时解析)
 int DobbyPltHook(const char *lib_name, const char *symbol,
                  void *replace, void **origin);
+// 正则批量 PLT hook (xHook 同款): 对所有匹配 path_regex 的 so 的 symbol 槽替换
+// 例: DobbyPltHookRegex(".*\\.so$", "exit", my_exit, &orig);
+int DobbyPltHookRegex(const char *path_regex, const char *symbol,
+                      void *replace, void **origin);
+
 // 撤销某库某符号的 PLT hook
 int DobbyPltUnhook(const char *lib_name, const char *symbol);
 

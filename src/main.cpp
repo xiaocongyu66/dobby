@@ -9,6 +9,7 @@
 #include "util.h"
 #include "stealth.h"
 #include "linker_monitor.h"
+#include "plt_regex.h"
 #include "callsite.h"
 #include "initarray.h"
 #include <cstdio>
@@ -54,6 +55,12 @@ int DobbyCallSiteHook(void *site, void **orig_callee, void *new_callee) {
 int DobbyCallSiteUnhook(void *site) { return dobby::CallSite::Unhook(site); }
 int DobbyReadInitArray(const char *lib_name, uintptr_t *out, int max) {
     return dobby::InitArray::Read(lib_name, out, max);
+}
+
+int DobbyPltHookRegex(const char *path_regex, const char *symbol,
+                      void *replace, void **origin) {
+    if (!g_init) DobbyInit(false);
+    return dobby::PltRegex::HookRegex(path_regex, symbol, replace, origin);
 }
 
 int DobbyPltUnhook(const char *lib_name, const char *symbol) {

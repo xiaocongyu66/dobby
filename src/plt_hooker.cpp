@@ -2,6 +2,8 @@
 // dobby::PltHooker — PLT/GOT hook (重定位表驱动, 运行时解析每个库)
 // ============================================================
 #include "plt_hooker.h"
+#include "plt_regex.h"
+#include "logger.h"
 #include "logger.h"
 #include "events.h"
 #include "dobby.h"
@@ -92,13 +94,18 @@ static void *plt_worker(void *) {
             if (!f) continue;
             char line[512];
             while (fgets(line, sizeof(line), f)) {
-                if (!strstr(line, s.lib)) continue;
+                if (!strstr(line, ".so")) continue;
                 char *dash = strchr(line, '-');
                 if (!dash) continue;
                 *dash = 0;
                 uintptr_t start = strtoul(line, nullptr, 16);
-                hook_one(start, s);
-                break;
+                char *sp = strrchr(dash + 1, '/');
+                const char *path = sp ? sp + 1 : "";
+                dobby::PltRegex::ApplyRules(start, path);   // 正则批量 (xHook 同款)
+                if (strstr(path, s.lib)) {
+                    hook_one(start, s);
+                    break;
+                }
             }
             fclose(f);
         }
