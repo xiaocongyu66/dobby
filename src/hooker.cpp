@@ -122,3 +122,6 @@ int Hooker::Unhook(void *target) {
 }
 
 } // namespace dobby
+
+bool Hooker::IsHooked(void *target) { return FindSlot(target) >= 0; }
+int Hooker::Count() { return g_slot_count; }

@@ -14,6 +14,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(SRCS
   src/main.cpp
+  src/android_api.cpp
   src/hooker.cpp
   src/plt_hooker.cpp
   src/waiter.cpp
