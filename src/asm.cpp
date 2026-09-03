@@ -3,6 +3,7 @@
 // 能力: 文本汇编 → 机器码; 一行式 patch; trampoline 跳转序列生成
 // ============================================================
 #include "asm.h"
+#if defined(__ANDROID__) && defined(__arm__)
 #include "util.h"
 #include "logger.h"
 #include <keystone.h>
@@ -59,3 +60,5 @@ int Asm::PatchAsm(const char *code, void *addr) {
 }
 
 } // namespace dobby
+
+#endif // __ANDROID__ && __arm__
