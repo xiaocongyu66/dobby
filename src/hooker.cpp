@@ -73,10 +73,35 @@ int Hooker::Hook(void *target, void *replace, void **origin) {
     if (!target || !replace) return DOBBY_ERR_INVALID;
     uintptr_t a = (uintptr_t)target;
     bool thumb = a & 1;
-    if (!thumb) return DOBBY_ERR_UNSUPPORTED;   // arm 函数头后续支持
-    uintptr_t fn = a - 1;
+    uintptr_t fn = thumb ? (a - 1) : a;
     if (FindSlot(target) >= 0) return DOBBY_ERR_ALREADY;
     if (g_slot_count >= (int)(sizeof(g_slots)/sizeof(g_slots[0]))) return DOBBY_ERR_FAILED;
+
+    // ARM 模式分支: 头 8B (2 条指令) 复制 + PC-rel 修正 + LDR PC 跳回
+    if (!thumb) {
+        size_t HEAD = 8;
+        unsigned char *tramp = (unsigned char *)mmap(nullptr, 0x1000, PROT_READ|PROT_WRITE|PROT_EXEC,
+                                                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        if (tramp == MAP_FAILED) return DOBBY_ERR_FAILED;
+        Stealth::DisguisePage(tramp, 0x1000);
+        // 复制 2 条 ARM 指令 (B/BL 的 PC-rel 修正暂缺 — 函数头 B 罕见):
+        memcpy(tramp, (void *)fn, HEAD);
+        // 尾部 LDR PC 跳回: ldr pc, [pc, #-4] + 字面量
+        *(unsigned int *)(tramp + HEAD) = 0xE51FF004;
+        *(unsigned int *)(tramp + HEAD + 4) = (unsigned int)(fn + HEAD);
+        // 函数头改写: ldr pc, [pc, #-4] + 字面量 → replace (arm 地址无 bit0)
+        if (Util::Protect((void *)fn, HEAD, PROT_READ|PROT_WRITE|PROT_EXEC) != 0)
+            { munmap(tramp, 0x1000); return DOBBY_ERR_FAILED; }
+        *(unsigned int *)fn = 0xE51FF004;
+        *(unsigned int *)(fn + 4) = (unsigned int)(uintptr_t)replace;
+        Util::Flush((void *)fn, HEAD);
+        Stealth::SnapshotIntegrity(target, *(unsigned int *)tramp);
+        HookSlot &s = g_slots[g_slot_count++];
+        s.target = target; s.replace = replace; s.trampoline = tramp; s.head_len = HEAD;
+        if (origin) *origin = (void *)tramp;
+        DOBBY_LOG_I("hooked %p -> %p (arm mode)", target, replace);
+        return DOBBY_OK;
+    }
 
     const size_t HEAD = 8;   // thumb 4 条
     // trampoline: 原指令 + 跳回 (ldr.w pc + 字面量 = 8B)

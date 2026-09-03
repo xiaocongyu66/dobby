@@ -20,6 +20,7 @@ set(SRCS
   src/linker_monitor.cpp
   src/callsite.cpp
   src/instrument.cpp
+  src/breakpoint.cpp
   src/initarray.cpp
   src/plt_hooker.cpp
   src/waiter.cpp

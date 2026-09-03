@@ -105,6 +105,11 @@ typedef struct {
 typedef void (*dobby_event_cb_t)(const DobbyHookEvent *ev);
 void DobbyOnHookEvent(dobby_event_cb_t cb);
 
+// ---------- 软件断点 (SIGTRAP 指令级观察) ----------
+int DobbyBreakpointInstall(void *addr, void (*cb)(void *ctx, void *user), void *user);
+int DobbyBreakpointReArm(void *addr);
+int DobbyBreakpointRemove(void *addr);
+
 // ---------- 反检测 (stealth) ----------
 // trampoline 匿名页改名伪装 (系统段名池)
 int DobbyStealthDisguise(void *page, size_t size);

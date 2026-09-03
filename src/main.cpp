@@ -9,6 +9,7 @@
 #include "util.h"
 #include "stealth.h"
 #include "linker_monitor.h"
+#include "breakpoint.h"
 #include "dobby_instrument.h"
 #include "plt_regex.h"
 #include "callsite.h"
@@ -122,6 +123,12 @@ int DobbyPatchInstrument(void *addr, const void *patch, size_t len, void *origin
 int DobbyPatchRestore(void *addr, const void *original, size_t len) {
     return dobby::Instrument::PatchRestore(addr, original, len);
 }
+
+int DobbyBreakpointInstall(void *addr, void (*cb)(void *ctx, void *user), void *user) {
+    return dobby::Breakpoint::Install(addr, (void (*)(DobbyRegContext *, void *))cb, user);
+}
+int DobbyBreakpointReArm(void *addr) { return dobby::Breakpoint::ReArm(addr); }
+int DobbyBreakpointRemove(void *addr) { return dobby::Breakpoint::Remove(addr); }
 
 int DobbyStealthDisguise(void *page, size_t size) { return dobby::Stealth::DisguisePage(page, size) ? 0 : -1; }
 bool DobbyStealthVerify(void *hooked_addr) { return dobby::Stealth::VerifyIntegrity(hooked_addr); }
