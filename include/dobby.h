@@ -116,6 +116,7 @@ int DobbyStealthDisguise(void *page, size_t size);
 // hook 点完整性校验 (true=未被 unhook)
 bool DobbyStealthVerify(void *hooked_addr);
 
+
 #ifdef __cplusplus
 }
 #endif
