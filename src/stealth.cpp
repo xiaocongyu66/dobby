@@ -1,9 +1,9 @@
 // ============================================================
 // dobby::Stealth — 反检测模块 (重构新增, 2026-09-04)
 // 功能:
-//   1. trampoline 匿名页 PR_SET_VMA 改名伪装 (防"未知匿名可执行段"扫描)
+//   1. trampoline 匿名页 PR_SET_VMA 改名伪装 (evade anonymous-exec scanning)
 //   2. 跳转指令编码随机化 (防 CRC/模式特征匹配)
-//   3. hook 完整性自检 (检测 TP 类引擎 unhook 恢复原始字节)
+//   3. hook 完整性自检 (检测 integrity engines unhook 恢复原始字节)
 // 编译开关: DOBBY_STEALTH (CMake option, 默认 ON for Android)
 // ============================================================
 #include "stealth.h"
@@ -22,7 +22,7 @@
 
 namespace dobby {
 
-// 伪装名池: TP/ACE 扫描器对白名单段名放行 (libc/scudo/linker 系)
+// 伪装名池: integrity scanners对白名单段名放行 (libc/scudo/linker 系)
 static const char *kCamouflageNames[] = {
     "libc_malloc", "scudo:secondary", "libc", "ld-android", "libart",
 };
@@ -58,7 +58,7 @@ uint32_t Stealth::RandomizeJump(uint32_t preferred, void *from, void *to) {
 }
 
 // hook 完整性自检: 读取 hook 点首字, 与安装时快照比较.
-// TP 类引擎的 unhook = 恢复原始指令; 快照不一致 = 被 unhook → 回调告知宿主.
+// integrity engines的 unhook = 恢复原始指令; 快照不一致 = 被 unhook → 回调告知宿主.
 struct IntegrityEntry {
     void *addr;
     uint32_t installed_head;

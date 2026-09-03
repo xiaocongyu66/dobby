@@ -1,6 +1,6 @@
 // ============================================================
 // dobby::InitArray — so 构造函数(.init_array)拦截
-// 用途: TP 组件 (tprt/tersafe) 的解密器都在 .init_array — 加载瞬间拦截!
+// 用途: late-loaded modules (tprt/tersafe) 的解密器都在 .init_array — 加载瞬间拦截!
 // 机制: hook linker 内部 __dl_call_array (fork BionicLinkerUtil 的
 //       resolve_elf_internal_symbol 能力) — 全局拦截 init 执行.
 // 降级: __dl_call_array 不可用时, 本模块仅提供枚举 (init_array 内容读取).
@@ -10,6 +10,9 @@
 #include "util.h"
 #include <string.h>
 #include <elf.h>
+#include <cstdio>
+#include <stdlib.h>
+#include <string.h>
 
 namespace dobby {
 
