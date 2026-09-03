@@ -9,6 +9,7 @@
 #include "util.h"
 #include "stealth.h"
 #include "linker_monitor.h"
+#include "dobby_instrument.h"
 #include "plt_regex.h"
 #include "callsite.h"
 #include "initarray.h"
@@ -100,6 +101,27 @@ int DobbyMemoryWrite(void *addr, const void *buf, size_t len) { return dobby::Ut
 int DobbyMemoryRead(void *buf, const void *addr, size_t len) { return dobby::Util::Read(buf, addr, len); }
 void DobbyMemoryNop(void *addr, size_t len) { dobby::Util::Nop(addr, len); }
 void DobbyMemoryFlush(void *addr, size_t len) { dobby::Util::Flush(addr, len); }
+
+void *DobbyIntercept(const char *lib, const char *symbol,
+                     void (*interceptor)(DobbyRegContext *, void *),
+                     void *user, uint32_t flags) {
+    return dobby::Instrument::Intercept(lib, symbol, interceptor, user, flags);
+}
+void *DobbyInterceptAddr(void *addr,
+                         void (*interceptor)(DobbyRegContext *, void *),
+                         void *user, uint32_t flags) {
+    return dobby::Instrument::InterceptAddr(addr, interceptor, user, flags);
+}
+int DobbyUnintercept(void *stub) { return dobby::Instrument::Unintercept(stub); }
+bool DobbyInstrumentStatsGet(void *stub, DobbyInstrumentStats *out) {
+    return dobby::Instrument::StatsGet(stub, out);
+}
+int DobbyPatchInstrument(void *addr, const void *patch, size_t len, void *origin_backup) {
+    return dobby::Instrument::Patch(addr, patch, len, origin_backup);
+}
+int DobbyPatchRestore(void *addr, const void *original, size_t len) {
+    return dobby::Instrument::PatchRestore(addr, original, len);
+}
 
 int DobbyStealthDisguise(void *page, size_t size) { return dobby::Stealth::DisguisePage(page, size) ? 0 : -1; }
 bool DobbyStealthVerify(void *hooked_addr) { return dobby::Stealth::VerifyIntegrity(hooked_addr); }
