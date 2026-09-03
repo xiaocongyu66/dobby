@@ -110,6 +110,10 @@ int DobbyBreakpointInstall(void *addr, void (*cb)(void *ctx, void *user), void *
 int DobbyBreakpointReArm(void *addr);
 int DobbyBreakpointRemove(void *addr);
 
+// ---------- 槽位守卫 (周期验证+自动恢复 — 防完整性引擎恢复槽) ----------
+int DobbyGuardAdd(void *slot, void *expected_value);
+int DobbyGuardRemove(void *slot);
+
 // ---------- 反检测 (stealth) ----------
 // trampoline 匿名页改名伪装 (系统段名池)
 int DobbyStealthDisguise(void *page, size_t size);

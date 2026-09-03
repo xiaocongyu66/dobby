@@ -18,6 +18,7 @@ set(SRCS
   src/hooker.cpp
   src/events.cpp
   src/linker_monitor.cpp
+  src/guard_slot.cpp
   src/callsite.cpp
   src/instrument.cpp
   src/breakpoint.cpp

@@ -9,6 +9,7 @@
 #include "util.h"
 #include "stealth.h"
 #include "linker_monitor.h"
+#include "guard_slot.h"
 #include "breakpoint.h"
 #include "dobby_instrument.h"
 #include "plt_regex.h"
@@ -25,6 +26,7 @@ int DobbyInit(bool is_init_linker) {
     dobby::PltHooker::Start();
     dobby::Waiter::Start();
     dobby::LinkerMonitor::Start();
+    dobby::GuardSlot::Start();
     g_init = true;
     return DOBBY_OK;
 }

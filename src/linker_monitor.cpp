@@ -7,6 +7,7 @@
 #include "dobby.h"
 #include <dlfcn.h>
 #include "logger.h"
+#include "events.h"
 #include <pthread.h>
 #include <string.h>
 #include <stdio.h>
@@ -21,6 +22,8 @@ static int g_sub_count = 0;
 static void notify(const char *path) {
     for (int i = 0; i < g_sub_count; i++)
         if (g_subs[i].on_load) g_subs[i].on_load(path, g_subs[i].user);
+    // 事件总线: so 加载事件 (lib=path, symbol=null, status=DOBBY_OK)
+    EmitEvent(nullptr, nullptr, nullptr, path, nullptr, DOBBY_OK);
 }
 
 // dlopen fake: 调原 → 成功则通知

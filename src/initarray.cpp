@@ -56,10 +56,4 @@ int InitArray::Read(const char *lib, uintptr_t *out, int max) {
     return n;
 }
 
-// linker 内部 call_array hook (TP 解密器拦截) — 需 BionicLinkerUtil, 下阶段接
-int InitArray::HookLinkerCall(void *pre_cb, void *user) {
-    (void)pre_cb; (void)user;
-    return DOBBY_ERR_UNSUPPORTED;   // 阶段 2: 经 resolve_elf_internal_symbol 接入
-}
-
 } // namespace dobby
