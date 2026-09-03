@@ -144,7 +144,7 @@ int Hooker::Unhook(void *target) {
     HookSlot &s = g_slots[idx];
     uintptr_t fn = (uintptr_t)target & ~1;
     // 还原原指令: 从 trampoline 复制回头 8B
-    Util::Write((void *)fn, s.trampoline, HEAD);
+    Util::Write((void *)fn, s.trampoline, 8);
     munmap(s.trampoline, 0x1000);
     g_slots[idx] = g_slots[--g_slot_count];
     DOBBY_LOG_I("unhooked %p (trampoline released)", target);
@@ -152,7 +152,7 @@ int Hooker::Unhook(void *target) {
     return DOBBY_OK;
 }
 
-} // namespace dobby
-
 bool Hooker::IsHooked(void *target) { return FindSlot(target) >= 0; }
 int Hooker::Count() { return g_slot_count; }
+
+} // namespace dobby
