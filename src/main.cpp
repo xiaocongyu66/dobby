@@ -8,6 +8,7 @@
 #include "symbols.h"
 #include "util.h"
 #include "stealth.h"
+#include "linker_monitor.h"
 #include "callsite.h"
 #include "initarray.h"
 #include <cstdio>
@@ -20,6 +21,7 @@ int DobbyInit(bool is_init_linker) {
     if (g_init) return DOBBY_OK;
     dobby::PltHooker::Start();
     dobby::Waiter::Start();
+    dobby::LinkerMonitor::Start();
     g_init = true;
     return DOBBY_OK;
 }

@@ -16,6 +16,8 @@ set(SRCS
   src/main.cpp
   src/android_api.cpp
   src/hooker.cpp
+  src/events.cpp
+  src/linker_monitor.cpp
   src/callsite.cpp
   src/initarray.cpp
   src/plt_hooker.cpp

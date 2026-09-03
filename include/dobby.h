@@ -87,6 +87,19 @@ int DobbyCallSiteUnhook(void *site);
 // ---------- .init_array 枚举 (so 构造函数) ----------
 int DobbyReadInitArray(const char *lib_name, uintptr_t *out, int max);
 
+
+// ---------- Hook 事件回调 (每次装配成功/失败通知宿主 — GlossHook 同款) ----------
+typedef struct {
+  void *target;        // hook 目标
+  void *replace;       // 替换函数
+  void *origin;        // 原函数 (可用时)
+  const char *lib;     // 库名 (plt/wait 场景)
+  const char *symbol;  // 符号名 (plt/wait 场景)
+  int status;          // DOBBY_OK / DOBBY_ERR_*
+} DobbyHookEvent;
+typedef void (*dobby_event_cb_t)(const DobbyHookEvent *ev);
+void DobbyOnHookEvent(dobby_event_cb_t cb);
+
 // ---------- 反检测 (stealth) ----------
 // trampoline 匿名页改名伪装 (系统段名池)
 int DobbyStealthDisguise(void *page, size_t size);

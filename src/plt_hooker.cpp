@@ -3,6 +3,7 @@
 // ============================================================
 #include "plt_hooker.h"
 #include "logger.h"
+#include "events.h"
 #include "dobby.h"
 #include <cstdio>
 #include <stdlib.h>

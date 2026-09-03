@@ -11,6 +11,7 @@
 // ============================================================
 #include "waiter.h"
 #include "logger.h"
+#include "events.h"
 #include "hooker.h"
 #include "dobby.h"
 
@@ -69,6 +70,7 @@ static bool try_install(WaitTask &t) {
     // 装配!
     Hooker::Hook(sym, t.replace, t.origin);
     DOBBY_LOG_I("wait-hook installed: %s!%s @%p", t.lib.c_str(), t.symbol.c_str(), sym);
+    EmitEvent(sym, t.replace, t.origin ? *t.origin : nullptr, t.lib.c_str(), t.symbol.c_str(), DOBBY_WAIT_INSTALLED);
     t.done = true;
     if (t.cb)
         t.cb(DOBBY_WAIT_INSTALLED, t.lib.c_str(), t.symbol.c_str(), sym, t.user_data);

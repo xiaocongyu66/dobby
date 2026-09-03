@@ -7,6 +7,7 @@
 // ============================================================
 #include "hooker.h"
 #include "logger.h"
+#include "events.h"
 #include "util.h"
 #include "stealth.h"
 #include <string.h>
@@ -108,6 +109,7 @@ int Hooker::Hook(void *target, void *replace, void **origin) {
     s.target = target; s.replace = replace; s.trampoline = tramp; s.head_len = HEAD;
     if (origin) *origin = (void *)((uintptr_t)tramp | 1);
     DOBBY_LOG_I("hooked %p -> %p (trampoline %p, thumb)", target, replace, tramp);
+    EmitEvent(target, replace, origin ? *origin : nullptr, nullptr, nullptr, DOBBY_OK);
     return DOBBY_OK;
 }
 
@@ -121,6 +123,7 @@ int Hooker::Unhook(void *target) {
     munmap(s.trampoline, 0x1000);
     g_slots[idx] = g_slots[--g_slot_count];
     DOBBY_LOG_I("unhooked %p (trampoline released)", target);
+    EmitEvent(target, nullptr, nullptr, nullptr, nullptr, DOBBY_OK);
     return DOBBY_OK;
 }
 
