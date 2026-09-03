@@ -10,6 +10,7 @@
 //   DobbyWaitHookOffset(lib, offset, replace, origin, flags, timeout_ms, cb)
 // ============================================================
 #include "waiter.h"
+#include "logger.h"
 #include "hooker.h"
 #include "dobby.h"
 
@@ -67,6 +68,7 @@ static bool try_install(WaitTask &t) {
         return false;
     // 装配!
     Hooker::Hook(sym, t.replace, t.origin);
+    DOBBY_LOG_I("wait-hook installed: %s!%s @%p", t.lib.c_str(), t.symbol.c_str(), sym);
     t.done = true;
     if (t.cb)
         t.cb(DOBBY_WAIT_INSTALLED, t.lib.c_str(), t.symbol.c_str(), sym, t.user_data);

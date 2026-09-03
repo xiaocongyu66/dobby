@@ -2,6 +2,7 @@
 // dobby::PltHooker — PLT/GOT hook (重定位表驱动, 运行时解析每个库)
 // ============================================================
 #include "plt_hooker.h"
+#include "logger.h"
 #include "dobby.h"
 #include <cstdio>
 #include <stdlib.h>
@@ -57,6 +58,7 @@ static int hook_one(uintptr_t base, PltSlot &s) {
             if (strcmp(nm, s.sym) == 0) {
                 void **slot = (void **)r[j].r_offset;
                 if (s.origin && *s.origin == nullptr) *s.origin = *slot;
+                DOBBY_LOG_I("plt: %s!%s slot %p: %p -> %p", s.lib, s.sym, slot, *slot, s.replace);
                 *slot = s.replace;
                 n++;
             }

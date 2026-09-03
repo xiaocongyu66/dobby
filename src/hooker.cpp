@@ -6,6 +6,7 @@
 // 头改写: thumb: LDR.W PC,[PC] + 字面量; arm: LDR PC,[PC,#-4] + 字面量
 // ============================================================
 #include "hooker.h"
+#include "logger.h"
 #include "util.h"
 #include "stealth.h"
 #include <string.h>
@@ -106,18 +107,20 @@ int Hooker::Hook(void *target, void *replace, void **origin) {
     HookSlot &s = g_slots[g_slot_count++];
     s.target = target; s.replace = replace; s.trampoline = tramp; s.head_len = HEAD;
     if (origin) *origin = (void *)((uintptr_t)tramp | 1);
+    DOBBY_LOG_I("hooked %p -> %p (trampoline %p, thumb)", target, replace, tramp);
     return DOBBY_OK;
 }
 
 int Hooker::Unhook(void *target) {
     int idx = FindSlot(target);
-    if (idx < 0) return DOBBY_ERR_NOT_FOUND;
+    if (idx < 0) { DOBBY_LOG_W("unhook: slot not found %p", target); return DOBBY_ERR_NOT_FOUND; }
     HookSlot &s = g_slots[idx];
     uintptr_t fn = (uintptr_t)target & ~1;
     // 还原原指令: 从 trampoline 复制回头 8B
     Util::Write((void *)fn, s.trampoline, HEAD);
     munmap(s.trampoline, 0x1000);
     g_slots[idx] = g_slots[--g_slot_count];
+    DOBBY_LOG_I("unhooked %p (trampoline released)", target);
     return DOBBY_OK;
 }
 
