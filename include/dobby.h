@@ -78,6 +78,15 @@ int DobbyMemoryRead(void *buf, const void *addr, size_t len);
 void DobbyMemoryNop(void *addr, size_t len);   // NOP 填充 (thumb/arm 自适应)
 void DobbyMemoryFlush(void *addr, size_t len); // icache 清理
 
+
+// ---------- 调用点 Hook (hook 函数内单个 BL/BLX 调用点) ----------
+// site: BL/BLX 指令地址 (thumb: bit0=1). orig_callee 收原 callee.
+int DobbyCallSiteHook(void *site, void **orig_callee, void *new_callee);
+int DobbyCallSiteUnhook(void *site);
+
+// ---------- .init_array 枚举 (so 构造函数) ----------
+int DobbyReadInitArray(const char *lib_name, uintptr_t *out, int max);
+
 // ---------- 反检测 (stealth) ----------
 // trampoline 匿名页改名伪装 (系统段名池)
 int DobbyStealthDisguise(void *page, size_t size);
