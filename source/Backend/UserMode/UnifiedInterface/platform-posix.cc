@@ -183,3 +183,9 @@ void OSPrint::VPrint(const char *format, va_list args) {
   vprintf(format, args);
 #endif
 }
+
+// ===================== Stealth 接线: trampoline 页伪装 =====================
+#include "Stealth.h"
+// MemoryAllocator/NearMemoryAllocator 的 page 分配完成后调用:
+//   dobby::Stealth::DisguisePage(page_addr, page_size);
+// (由 HookRuntime 装配 trampoline 时统一触发 — 见 HookRuntime.cpp)
