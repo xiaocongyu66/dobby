@@ -23,7 +23,6 @@
 
 #include "xdl_lzma.h"
 
-#include <android/api-level.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -119,19 +118,10 @@ static void xdl_lzma_internal_free(ISzAllocPtr p, void *address) {
 }
 
 int xdl_lzma_decompress(uint8_t *src, size_t src_size, uint8_t **dst, size_t *dst_size) {
-  size_t src_offset = 0;
-  size_t dst_offset = 0;
-  size_t src_remaining;
-  size_t dst_remaining;
-  ISzAlloc alloc = {.Alloc = xdl_lzma_internal_alloc, .Free = xdl_lzma_internal_free};
-  ECoderStatus status;
-  int api_level = xdl_util_get_api_level();
+  *dst = NULL;
+  *dst_size = 0;
 
-  // This is not a bug; it has proven to be safe and feasible on these products.
-  // We currently lack a convenient method to obtain the size of the system's LZMA state structure at runtime.
-  long long state[4096 / sizeof(long long)];
-
-  // init and check
+  // LZMA init (only once)
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
   static bool inited = false;
   if (!__atomic_load_n(&inited, __ATOMIC_ACQUIRE)) {
@@ -144,19 +134,29 @@ int xdl_lzma_decompress(uint8_t *src, size_t src_size, uint8_t **dst, size_t *ds
   }
   if (NULL == xdl_lzma_code) return -1;
 
+  // LZMA state init
+  long long state[4096 / sizeof(long long)];
+  ISzAlloc alloc = {.Alloc = xdl_lzma_internal_alloc, .Free = xdl_lzma_internal_free};
   xdl_lzma_construct(&state, &alloc);
 
-  *dst_size = src_size;
-  *dst = NULL;
+  // LZMA decompress
+  int api_level = xdl_util_get_api_level();
+  ECoderStatus status;
+  size_t src_offset = 0;
+  size_t dst_offset = 0;
+  *dst_size = 7 * src_size;
+  if (NULL == (*dst = malloc(*dst_size))) goto err;
   do {
-    *dst_size *= 2;
-    if (NULL == (*dst = realloc(*dst, *dst_size))) {
-      xdl_lzma_free(&state);
-      return -1;
+    size_t src_remaining = src_size - src_offset;
+    size_t dst_remaining = *dst_size - dst_offset;
+    if (dst_remaining < 2 * src_size) {
+      size_t new_dst_size = *dst_size + 2 * src_size;
+      uint8_t *new_dst = realloc(*dst, new_dst_size);
+      if (NULL == new_dst) goto err;
+      *dst = new_dst;
+      *dst_size = new_dst_size;
+      dst_remaining += (2 * src_size);
     }
-
-    src_remaining = src_size - src_offset;
-    dst_remaining = *dst_size - dst_offset;
 
     int result;
     if (api_level >= __ANDROID_API_Q__) {
@@ -168,25 +168,25 @@ int xdl_lzma_decompress(uint8_t *src, size_t src_size, uint8_t **dst, size_t *ds
       result = lzma_code(&state, *dst + dst_offset, &dst_remaining, src + src_offset, &src_remaining,
                          CODER_FINISH_ANY, &status);
     }
-    if (SZ_OK != result) {
-      free(*dst);
-      xdl_lzma_free(&state);
-      return -1;
-    }
+    if (SZ_OK != result) goto err;
 
     src_offset += src_remaining;
     dst_offset += dst_remaining;
   } while (status == CODER_STATUS_NOT_FINISHED);
+  if (!xdl_lzma_isfinished(&state)) goto err;
 
-  if (!xdl_lzma_isfinished(&state)) {
-    xdl_lzma_free(&state);
-    free(*dst);
-    return -1;
-  }
-
+  // OK
   xdl_lzma_free(&state);
-
   *dst_size = dst_offset;
   *dst = realloc(*dst, *dst_size);
   return 0;
+
+err:
+  xdl_lzma_free(&state);
+  if (NULL != *dst) {
+    free(*dst);
+    *dst = NULL;
+  }
+  *dst_size = 0;
+  return -1;
 }

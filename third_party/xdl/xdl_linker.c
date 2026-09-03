@@ -23,7 +23,6 @@
 
 #include "xdl_linker.h"
 
-#include <android/api-level.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdbool.h>

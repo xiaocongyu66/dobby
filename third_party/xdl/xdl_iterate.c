@@ -29,7 +29,6 @@
 #include <elf.h>
 #include <inttypes.h>
 #include <link.h>
-#include <limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>

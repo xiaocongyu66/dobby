@@ -50,14 +50,6 @@
 #define STT_GNU_IFUNC 10
 #endif
 
-#ifndef ELF_ST_TYPE
-#ifdef __LP64__
-#define ELF_ST_TYPE ELF64_ST_TYPE
-#else
-#define ELF_ST_TYPE ELF32_ST_TYPE
-#endif
-#endif
-
 #ifndef __LP64__
 #define XDL_LIB_PATH "/system/lib"
 #else
