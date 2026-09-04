@@ -15,12 +15,12 @@ int Util::Protect(void *addr, size_t len, int prot) {
 }
 
 int Util::Write(void *addr, const void *buf, size_t len) {
-    if (Protect(addr, len, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
-        if (Protect(addr, len, PROT_READ | PROT_WRITE) != 0)
-            return -1;
+    // ⚠️ 反检测: 不用 RWX (mprotect audit 抓 RWX 授予) — 
+    // 写时 RW, 写后 RX (代码段原权限), 不带 X 的写入走 RW:
+    if (Protect(addr, len, PROT_READ | PROT_WRITE) != 0) return -1;
     memcpy(addr, buf, len);
     Flush(addr, len);
-    Protect(addr, len, PROT_READ | PROT_EXEC);
+    Protect(addr, len, PROT_READ | PROT_EXEC);   // 代码页恢复 RX (无 W)
     return 0;
 }
 

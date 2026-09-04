@@ -10,6 +10,7 @@
 #include "events.h"
 #include "util.h"
 #include "stealth.h"
+#include "stealth.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sys/mman.h>
