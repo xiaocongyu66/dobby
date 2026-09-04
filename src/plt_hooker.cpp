@@ -86,6 +86,7 @@ int PltHooker::Hook(const char *lib, const char *sym, void *replace, void **orig
 
 // 遍历 /proc/self/maps 对每个已加载库执行挂起的 PLT hook (含迟加载补挂)
 static void *plt_worker(void *) {
+    pthread_setname_np(pthread_self(), "plt_worker");
     for (;;) {
         for (int i = 0; i < g_plt_count; i++) {
             PltSlot &s = g_plt[i];

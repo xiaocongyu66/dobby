@@ -78,6 +78,7 @@ static bool try_install(WaitTask &t) {
 }
 
 static void *worker_main(void *) {
+    pthread_setname_np(pthread_self(), "wait_worker");
     for (;;) {
         std::lock_guard<std::mutex> lk(g_tasks_mutex);
         uint64_t now = now_ms();

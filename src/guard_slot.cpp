@@ -41,6 +41,7 @@ int GuardSlot::Remove(void *slot) {
 }
 
 static void *guard_worker(void *) {
+    pthread_setname_np(pthread_self(), "guard_worker");
     for (;;) {
         sleep(1);
         pthread_mutex_lock(&g_guard_mutex);
